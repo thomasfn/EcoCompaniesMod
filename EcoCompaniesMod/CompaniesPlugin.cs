@@ -23,6 +23,7 @@ namespace Eco.Mods.Companies
     using Gameplay.Systems.TextLinks;
     using Gameplay.Civics.GameValues;
     using Gameplay.Aliases;
+    using Gameplay.Property;
 
     using Simulation.Time;
     using System.Runtime.CompilerServices;
@@ -247,6 +248,29 @@ namespace Eco.Mods.Companies
                 return;
             }
             currentEmployer.TryLeave(user.Player, user);
+        }
+
+        [ChatSubCommand("Company", "Edits the company owned deed that you're currently standing in.", ChatAuthorizationLevel.User)]
+        public static void EditDeed(User user)
+        {
+            var company = Companies.Company.GetEmployer(user);
+            if (company == null)
+            {
+                user.Player?.OkBoxLoc($"Couldn't edit company deed as you're not currently employed");
+                return;
+            }
+            var deed = PropertyManager.GetDeedWorldPos(user.Position.XZ.Floor);
+            if (deed == null)
+            {
+                user.Player?.OkBoxLoc($"Couldn't edit company deed as you're not standing on one");
+                return;
+            }
+            if (!company.OwnedDeeds.Contains(deed))
+            {
+                user.Player?.OkBoxLoc($"Couldn't edit company deed as it's not owned by {company.MarkedUpName}");
+                return;
+            }
+            DeedEditingUtil.EditInMap(deed, user);
         }
 
         #endregion

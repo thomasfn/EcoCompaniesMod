@@ -29,6 +29,7 @@ namespace Eco.Mods.Companies
     using Shared.Items;
     using Shared.Utils;
     using Shared.View;
+    using Eco.Gameplay.Auth;
 
     public class CompanyManager : Singleton<CompanyManager>, IGameActionAware
     {
@@ -84,7 +85,7 @@ namespace Eco.Mods.Companies
                 foreach (var deed in propertyTransferAction.RelatedDeeds)
                 {
                     var ownerCompany = Company.GetFromLegalPerson(deed.Owners);
-                    if (ownerCompany == null || ownerCompany != deedOwnerCompany)
+                    if (ownerCompany == null || (deedOwnerCompany != null && ownerCompany != deedOwnerCompany))
                     {
                         deedOwnerCompany = null;
                         break;
@@ -93,7 +94,7 @@ namespace Eco.Mods.Companies
                 }
                 if (deedOwnerCompany == null) { return null; }
                 if (!deedOwnerCompany.IsEmployee(propertyTransferAction.Citizen)) { return null; }
-                return Result.Succeed(Localizer.Do($"{propertyTransferAction.Citizen.UILink()} is an employee of {deedOwnerCompany.UILink()}"));
+                return AuthManagerExtensions.SpecialAccessResult(deedOwnerCompany);
             }
             if (action is ClaimOrUnclaimProperty claimOrUnclaimPropertyAction)
             {
@@ -101,7 +102,7 @@ namespace Eco.Mods.Companies
                 var deedOwnerCompany = Company.GetFromLegalPerson(claimOrUnclaimPropertyAction.PreviousDeedOwner);
                 if (deedOwnerCompany == null) { return null; }
                 if (!deedOwnerCompany.IsEmployee(claimOrUnclaimPropertyAction.Citizen)) { return null; }
-                return Result.Succeed(Localizer.Do($"{claimOrUnclaimPropertyAction.Citizen.UILink()} is an employee of {deedOwnerCompany.UILink()}"));
+                return AuthManagerExtensions.SpecialAccessResult(deedOwnerCompany);
             }
             return null;
         }
