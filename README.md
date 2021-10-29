@@ -6,6 +6,13 @@ A server mod for Eco 9.4 that extends the law and economy system with player con
 2. Copy the `EcoCompaniesMod.dll` file to `Mods` folder of the dedicated server.
 3. Restart the server.
 
+## Compatibility
+
+There is no direct dependency or special support for the following mods but their features should be compatible:
+- [EcoCivicsImportExportMod](https://github.com/thomasfn/EcoCivicsImportExportMod) - importing/exporting laws using game values added by this mod
+- [EcoSmartTaxMod](https://github.com/thomasfn/EcoSmartTaxMod) - using Smart Tax/Pay/Rebate actions on the company legal person
+  - accessing the company's tax card is a bit awkward but doable via `/tax othercard <company name> Legal Person`
+
 ## Usage
 
 Companies are created and managed through a set of chat commands. All related commands are sub-commands of `/company`.
@@ -28,23 +35,52 @@ The following game values are added to assist with writing company-aware laws.
 #### Account Legal Person
 Retrieves the legal person user from a given bank account. This is helpful to derive the subject company, if any, for law triggers that involve a currency transaction, e.g. "Currency Transfer".
 
+| Property Name | Type | Description |
+| - | - | - |
+| BankAccount | Bank Account | The company bank account used to resolve the owner company. |
+
 #### Employer Legal Person
 Retrieves the legal person user from a given employee user. This is helpful to derive the employer company, if any, for law triggers that involve a citizen - for example, placing blocks, cutting trees or claiming property.
+
+| Property Name | Type | Description |
+| - | - | - |
+| Citizen | User | The employee. |
 
 #### Employee Count
 Retrieves the number of employees of a company, including the CEO. The legal person for the company will be needed as context.
 
+| Property Name | Type | Description |
+| - | - | - |
+| LegalPerson | User | The legal person of the company being evaluated. This could be retrieved from context via Account Legal Person or Employer Legal Person, or directly if using a citizen timer combined with a Is Company Legal Person condition. |
+
 #### Skill Count
-Retrieves the number of specialisations of all employees of a company, including Self Improvement. There is an option to choose unique skills only or not. The legal person for the company will be needed as context.
+Retrieves the number of specialisations of all employees of a company, including Self Improvement. This only counts skills into which a star has been invested. There is an option to choose unique skills only or not. The legal person for the company will be needed as context.
+
+| Property Name | Type | Description |
+| - | - | - |
+| LegalPerson | User | The legal person of the company being evaluated. This could be retrieved from context via Account Legal Person or Employer Legal Person, or directly if using a citizen timer combined with a Is Company Legal Person condition. |
+| UniqueSkills | Yes/No | Whether to consider unique skills only. For example, two employees both with Mining would count as 2 skills, but only 1 unique skill. |
 
 #### Is CEO Of Company
 Gets if the given citizen is the CEO of any company.
 
+| Property Name | Type | Description |
+| - | - | - |
+| Citizen | User | The citizen being checked. |
+
 #### Is Employee Of Company
-Gets if the given citizen is the employee of any company.
+Gets if the given citizen is the employee (or CEO) of any company.
+
+| Property Name | Type | Description |
+| - | - | - |
+| Citizen | User | The citizen being checked. |
 
 #### Is Company Legal Person
 Gets if the given citizen is the generated legal person user for a company.
+
+| Property Name | Type | Description |
+| - | - | - |
+| Citizen | User | The citizen being checked. |
 
 ## Building Mod from Source
 
