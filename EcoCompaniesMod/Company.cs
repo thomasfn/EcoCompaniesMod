@@ -93,8 +93,8 @@ namespace Eco.Mods.Companies
             // Setup bank account
             if (BankAccount == null)
             {
-                BankAccount = LegalPerson.BankAccount;
-                BankAccount.SetAccountName(null, $"{Name} Company Account");
+                BankAccount = BankAccountManager.Obj.GetPersonalBankAccount(LegalPerson.Name);
+                BankAccount.SetName(null, $"{Name} Company Account");
                 UpdateBankAccountAuthList(BankAccount);
             }
         }

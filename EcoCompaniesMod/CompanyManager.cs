@@ -1,34 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Eco.Mods.Companies
 {
-    using Core.Controller;
     using Core.Systems;
     using Core.Utils;
-    using Core.Utils.PropertyScanning;
 
-    using Gameplay.Utils;
-    using Gameplay.Systems.Tooltip;
     using Gameplay.Players;
-    using Gameplay.Systems.TextLinks;
-    using Gameplay.Economy;
     using Gameplay.GameActions;
-    using Gameplay.Civics.Titles;
-    using Gameplay.Civics.GameValues;
-    using Gameplay.Systems.Chat;
-    using Gameplay.Aliases;
     using Gameplay.Property;
 
-    using Shared.Serialization;
-    using Shared.Localization;
-    using Shared.Services;
-    using Shared.Items;
     using Shared.Utils;
-    using Shared.View;
+    using Eco.Gameplay.Auth;
 
     public class CompanyManager : Singleton<CompanyManager>, IGameActionAware
     {
@@ -51,6 +34,21 @@ namespace Eco.Mods.Companies
                     }
                 }
             }
+        }
+
+        public bool ValidateName(Player invoker, string name)
+        {
+            if (name.Length < 3)
+            {
+                invoker?.OkBoxLoc($"Company name is too short, must be at least 3 characters long");
+                return false;
+            }
+            if (name.Length > 50)
+            {
+                invoker?.OkBoxLoc($"Company name is too long, must be at most 3 characters long");
+                return false;
+            }
+            return true;
         }
 
         public Company CreateNew(User ceo, string name)
@@ -84,7 +82,7 @@ namespace Eco.Mods.Companies
                 foreach (var deed in propertyTransferAction.RelatedDeeds)
                 {
                     var ownerCompany = Company.GetFromLegalPerson(deed.Owners);
-                    if (ownerCompany == null || ownerCompany != deedOwnerCompany)
+                    if (ownerCompany == null || (deedOwnerCompany != null && ownerCompany != deedOwnerCompany))
                     {
                         deedOwnerCompany = null;
                         break;
@@ -93,7 +91,7 @@ namespace Eco.Mods.Companies
                 }
                 if (deedOwnerCompany == null) { return null; }
                 if (!deedOwnerCompany.IsEmployee(propertyTransferAction.Citizen)) { return null; }
-                return Result.Succeed(Localizer.Do($"{propertyTransferAction.Citizen.UILink()} is an employee of {deedOwnerCompany.UILink()}"));
+                return AuthManagerExtensions.SpecialAccessResult(deedOwnerCompany);
             }
             if (action is ClaimOrUnclaimProperty claimOrUnclaimPropertyAction)
             {
@@ -101,7 +99,7 @@ namespace Eco.Mods.Companies
                 var deedOwnerCompany = Company.GetFromLegalPerson(claimOrUnclaimPropertyAction.PreviousDeedOwner);
                 if (deedOwnerCompany == null) { return null; }
                 if (!deedOwnerCompany.IsEmployee(claimOrUnclaimPropertyAction.Citizen)) { return null; }
-                return Result.Succeed(Localizer.Do($"{claimOrUnclaimPropertyAction.Citizen.UILink()} is an employee of {deedOwnerCompany.UILink()}"));
+                return AuthManagerExtensions.SpecialAccessResult(deedOwnerCompany);
             }
             return null;
         }

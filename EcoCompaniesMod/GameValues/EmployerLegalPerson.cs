@@ -28,7 +28,7 @@ namespace Eco.Mods.Companies
         public override Eval<User> Value(IContextObject action)
         {
             var user = this.Citizen?.Value(action); if (user?.Val == null) return this.FailNullSafe(user, nameof(this.Citizen));
-            var company = Company.GetEmployer(user.Val);
+            var company = Company.GetFromLegalPerson(user.Val) ?? Company.GetEmployer(user.Val);
 
             return Eval.Make<User>($"{company?.LegalPerson.UILinkNullSafe()} ({user?.Val.UILink()}'s employer company's legal person)", company?.LegalPerson);
         }
