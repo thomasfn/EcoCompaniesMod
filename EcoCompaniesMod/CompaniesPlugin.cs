@@ -176,7 +176,8 @@ namespace Eco.Mods.Companies
                 user.Player?.OkBoxLoc($"Couldn't found a company as you're already a member of {existingEmployer}");
                 return;
             }
-            // TODO: Validate company name
+            name = name.Trim();
+            if (!CompanyManager.Obj.ValidateName(user.Player, name)) { return; }
             var company = CompanyManager.Obj.CreateNew(user, name);
             ChatManager.ServerMessageToAll(Localizer.Do($"{user.UILink()} has founded the company {company.UILink()}!"), Shared.Services.DefaultChatTags.Government, Shared.Services.MessageCategory.Chat);
         }
