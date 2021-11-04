@@ -22,6 +22,8 @@ namespace Eco.Mods.Companies
 
         [Eco, Advanced, LocDescription("Whether to only consider unique skills.")] public GameValue<bool> UniqueSkills { get; set; } = new No();
 
+        [Eco, Advanced, LocDescription("Whether to return the highest employee skill count instead of the sum.")] public GameValue<bool> Highest { get; set; } = new No();
+
         private Eval<float> FailNullSafeFloat<T>(Eval<T> eval, string paramName) =>
             eval != null ? Eval.Make($"Invalid {Localizer.DoStr(paramName)} specified on {GetType().GetLocDisplayName()}: {eval.Message}", float.MinValue)
                          : Eval.Make($"{Localizer.DoStr(paramName)} not set on {GetType().GetLocDisplayName()}.", float.MinValue);
@@ -30,22 +32,42 @@ namespace Eco.Mods.Companies
         {
             var legalPerson = this.LegalPerson?.Value(action); if (legalPerson?.Val == null) return this.FailNullSafeFloat(legalPerson, nameof(this.LegalPerson));
             var uniqueSkills = this.UniqueSkills?.Value(action); if (uniqueSkills?.Val == null) return this.FailNullSafeFloat(uniqueSkills, nameof(this.UniqueSkills));
+            var highest = this.Highest?.Value(action); if (highest?.Val == null) return this.FailNullSafeFloat(highest, nameof(this.Highest));
 
             var company = Company.GetFromLegalPerson(legalPerson.Val);
             if (company == null) return this.FailNullSafeFloat(legalPerson, nameof(this.LegalPerson));
-            var companySkills = company.AllEmployees
-                .SelectMany(user => user.Skillset.Skills)
-                .Where(skill => skill.Level > 0 && skill.RootSkillTree != skill.SkillTree)
-                .Select(skill => skill.GetType());
-            if (uniqueSkills.Val)
-            {
-                companySkills = companySkills.Distinct();
-            }
-            float companySkillCount = companySkills.Count();
 
-            return Eval.Make($"{Text.StyledNum(companySkillCount)} ({(uniqueSkills.Val ? "unique " : "")}skill count of {company.UILink()})", companySkillCount);
+            float companySkillCount;
+            if (highest.Val)
+            {
+                companySkillCount = company.AllEmployees
+                    .Select(user => user.Skillset.Skills.Where(skill => skill.Level > 0 && skill.RootSkillTree != skill.SkillTree).Count())
+                    .OrderByDescending(count => count)
+                    .FirstOrDefault();
+                // TODO: Figure out what it means when unique = true, e.g. in what case does unique highest != highest?
+            }
+            else
+            {
+                var companySkills = company.AllEmployees
+                    .SelectMany(user => user.Skillset.Skills)
+                    .Where(skill => skill.Level > 0 && skill.RootSkillTree != skill.SkillTree)
+                    .Select(skill => skill.GetType());
+                if (uniqueSkills.Val)
+                {
+                    companySkills = companySkills.Distinct();
+                }
+                companySkillCount = companySkills.Count();
+            }
+
+            return Eval.Make($"{Text.StyledNum(companySkillCount)} ({(highest.Val ? "highest " : "")}{(uniqueSkills.Val ? "unique " : "")}skill count of {company.UILink()})", companySkillCount);
         }
 
-        public override LocString Description() => Localizer.Do($"({(UniqueSkills is Yes ? "unique " : UniqueSkills is No ? "" : $"unique (when {UniqueSkills.DescribeNullSafe()}) ")}skill count of company of {LegalPerson.DescribeNullSafe()}");
+        public override LocString Description() => Localizer.Do($"({DescribeHighest()}{DescribeUniqueSkills()}skill count of company of {LegalPerson.DescribeNullSafe()}");
+
+        private string DescribeUniqueSkills()
+            => UniqueSkills is Yes ? "unique " : UniqueSkills is No ? "" : $"unique (when {UniqueSkills.DescribeNullSafe()}) ";
+
+        private string DescribeHighest()
+            => Highest is Yes ? "highest " : Highest is No ? "" : $"highest (when {Highest.DescribeNullSafe()}) ";
     }
 }
