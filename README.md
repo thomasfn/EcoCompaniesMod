@@ -61,12 +61,13 @@ Retrieves the number of employees of a company, including the CEO. The legal per
 | LegalPerson | User | The legal person of the company being evaluated. This could be retrieved from context via Account Legal Person or Employer Legal Person, or directly if using a citizen timer combined with a Is Company Legal Person condition. |
 
 #### Skill Count
-Retrieves the number of specialisations of all employees of a company, including Self Improvement. This only counts skills into which a star has been invested. There is an option to choose unique skills only or not. The legal person for the company will be needed as context.
+Retrieves the number of specialisations of all employees of a company, including Self Improvement. This only counts skills into which a star has been invested. There is an option to choose unique skills only or not and an option to choose whether to pick the highest skill count or sum them. The legal person for the company will be needed as context.
 
 | Property Name | Type | Description |
 | - | - | - |
 | LegalPerson | User | The legal person of the company being evaluated. This could be retrieved from context via Account Legal Person or Employer Legal Person, or directly if using a citizen timer combined with a Is Company Legal Person condition. |
 | UniqueSkills | Yes/No | Whether to consider unique skills only. For example, two employees both with Mining would count as 2 skills, but only 1 unique skill. |
+| Highest | Yes/No | Whether to select the highest number of skills held per employee rather than the sum. |
 
 #### Is CEO Of Company
 Gets if the given citizen is the CEO of any company.
