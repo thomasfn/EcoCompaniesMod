@@ -140,6 +140,17 @@ namespace Eco.Mods.Companies
                     // This shouldn't really be possible as EmployerLegalPersonAlias is marked as NonSelectable but do it anyway to be safe
                     newValue = GetGameValueType<EmployerLegalPerson>();
                 }
+                else if (gvt.Type == typeof(CompanyCeo) && prop.PropertyType == typeof(GameValue<IAlias>))
+                {
+                    // The property wants an IAlias and the client sent an CompanyCeo, so remap it to CompanyCeoAlias
+                    newValue = GetGameValueType<CompanyCeoAlias>();
+                }
+                else if (gvt.Type == typeof(CompanyCeoAlias) && prop.PropertyType == typeof(GameValue<User>))
+                {
+                    // The property wants a User and the client sent an CompanyCeoAlias, so remap it to CompanyCeo
+                    // This shouldn't really be possible as CompanyCeoAlias is marked as NonSelectable but do it anyway to be safe
+                    newValue = GetGameValueType<CompanyCeo>();
+                }
             }
             GameValueManager.DynamicSetGameValue(parent, prop, newValue);
         }

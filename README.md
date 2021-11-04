@@ -46,6 +46,13 @@ Retrieves the legal person user from a given employee user. This is helpful to d
 | - | - | - |
 | Citizen | User | The employee. |
 
+#### Company CEO
+Retrieves the CEO user from a given company. The legal person for the company will be needed as context.
+
+| Property Name | Type | Description |
+| - | - | - |
+| LegalPerson | User | The legal person of the company being evaluated. This could be retrieved from context via Account Legal Person or Employer Legal Person, or directly if using a citizen timer combined with a Is Company Legal Person condition. |
+
 #### Employee Count
 Retrieves the number of employees of a company, including the CEO. The legal person for the company will be needed as context.
 
