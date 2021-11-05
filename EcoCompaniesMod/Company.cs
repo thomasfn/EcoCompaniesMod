@@ -68,7 +68,9 @@ namespace Eco.Mods.Companies
             => (Ceo != null ? Employees?.Prepend(Ceo) : Employees) ?? Enumerable.Empty<User>();
 
         public IEnumerable<Deed> OwnedDeeds
-            => (LegalPerson == null ? null : PropertyManager.AllOwnedDeeds(LegalPerson)) ?? Enumerable.Empty<Deed>();
+            => LegalPerson == null ? Enumerable.Empty<Deed>() :
+                PropertyManager.GetAllDeeds()
+                    .Where(deed => deed?.Owners?.Contains(LegalPerson) ?? false);
 
         public IEnumerable<ShareholderHolding> Shareholders =>
             Ceo != null ? Enumerable.Repeat(new ShareholderHolding(Ceo, 1.0f), 1) : Enumerable.Empty<ShareholderHolding>();
