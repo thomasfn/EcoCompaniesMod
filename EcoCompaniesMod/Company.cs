@@ -64,10 +64,11 @@ namespace Eco.Mods.Companies
 
         [Serialized, NotNull] public ThreadSafeHashSet<User> InviteList { get; set; } = new ThreadSafeHashSet<User>();
 
-        public IEnumerable<User> AllEmployees => Ceo != null ? Employees.Prepend(Ceo) : Employees;
+        public IEnumerable<User> AllEmployees
+            => (Ceo != null ? Employees?.Prepend(Ceo) : Employees) ?? Enumerable.Empty<User>();
 
-        public IEnumerable<Deed> OwnedDeeds =>
-            LegalPerson == null ? Enumerable.Empty<Deed>() : PropertyManager.AllOwnedDeeds(LegalPerson);
+        public IEnumerable<Deed> OwnedDeeds
+            => (LegalPerson == null ? null : PropertyManager.AllOwnedDeeds(LegalPerson)) ?? Enumerable.Empty<Deed>();
 
         public IEnumerable<ShareholderHolding> Shareholders =>
             Ceo != null ? Enumerable.Repeat(new ShareholderHolding(Ceo, 1.0f), 1) : Enumerable.Empty<ShareholderHolding>();
@@ -205,6 +206,29 @@ namespace Eco.Mods.Companies
             UpdateDeedAuthList(deed);
         }
 
+        public void OnNowOwnerOfProperty(IEnumerable<Deed> deeds)
+        {
+            foreach (var deed in deeds)
+            {
+                OnNowOwnerOfProperty(deed);
+            }
+        }
+
+        public void OnNoLongerOwnerOfProperty(Deed deed)
+        {
+            SendCompanyMessage(Localizer.Do($"{this.UILink()} is no longer the owner of {deed.UILink()}"));
+            deed.Accessors.Clear();
+            deed.Residency.Invitations.InvitationList.Clear();
+        }
+
+        public void OnNoLongerOwnerOfProperty(IEnumerable<Deed> deeds)
+        {
+            foreach (var deed in deeds)
+            {
+                OnNoLongerOwnerOfProperty(deed);
+            }
+        }
+
         private void UpdateDeedAuthList(Deed deed)
         {
             deed.Accessors.Set(AllEmployees);
@@ -251,11 +275,11 @@ namespace Eco.Mods.Companies
             sb.Append(TextLoc.HeaderLoc($"CEO: "));
             sb.AppendLine(Ceo.UILinkNullSafe());
             sb.AppendLine(TextLoc.HeaderLoc($"Employees:"));
-            sb.AppendLine(this.Employees.Any() ? this.Employees.Select(x => x.UILink()).InlineFoldoutListLoc("citizen", TooltipOrigin.None, 5) : Localizer.DoStr("None."));
+            sb.AppendLine(this.Employees.Any() ? this.Employees.Select(x => x.UILinkNullSafe()).InlineFoldoutListLoc("citizen", TooltipOrigin.None, 5) : Localizer.DoStr("None."));
             sb.Append(TextLoc.HeaderLoc($"Finances: "));
             sb.AppendLineLoc($"{BankAccount.UILinkNullSafe()}");
             sb.AppendLine(TextLoc.HeaderLoc($"Property:"));
-            sb.AppendLine(this.OwnedDeeds.Any() ? this.OwnedDeeds.Select(x => x.UILink()).InlineFoldoutListLoc("deed", TooltipOrigin.None, 5) : Localizer.DoStr("None."));
+            sb.AppendLine(this.OwnedDeeds.Any() ? this.OwnedDeeds.Select(x => x.UILinkNullSafe()).InlineFoldoutListLoc("deed", TooltipOrigin.None, 5) : Localizer.DoStr("None."));
             sb.AppendLine(TextLoc.HeaderLoc($"Shareholders:"));
             sb.AppendLine(this.Shareholders.Any() ? this.Shareholders.Select(x => x.Description).InlineFoldoutListLoc("holding", TooltipOrigin.None, 5) : Localizer.DoStr("None."));
             return sb.ToLocString();

@@ -18,22 +18,6 @@ namespace Eco.Mods.Companies
         public CompanyManager()
         {
             ActionUtil.AddListener(this);
-            PropertyManager.OnDeedOwnerChanged.Add(OnDeedOwnerChanged);
-        }
-
-        private static void OnDeedOwnerChanged()
-        {
-            foreach (var deed in PropertyManager.GetAllDeeds())
-            {
-                if (deed.Owners is User userOwner)
-                {
-                    var company = Company.GetFromLegalPerson(userOwner);
-                    if (company != null)
-                    {
-                        company.OnNowOwnerOfProperty(deed);
-                    }
-                }
-            }
         }
 
         public bool ValidateName(Player invoker, string name)
@@ -69,6 +53,12 @@ namespace Eco.Mods.Companies
                     sourceCompany?.OnGiveMoney(moneyGameAction);
                     var destCompany = Company.GetFromBankAccount(moneyGameAction.SourceBankAccount);
                     destCompany?.OnReceiveMoney(moneyGameAction);
+                    break;
+                case PropertyTransfer propertyTransferAction:
+                    var oldOwnerCompany = Company.GetFromLegalPerson(propertyTransferAction.CurrentOwner);
+                    if (oldOwnerCompany != null) { oldOwnerCompany.OnNoLongerOwnerOfProperty(propertyTransferAction.RelatedDeeds); }
+                    var newOwnerCompany = Company.GetFromLegalPerson(propertyTransferAction.NewOwner);
+                    if (newOwnerCompany != null) { newOwnerCompany.OnNowOwnerOfProperty(propertyTransferAction.RelatedDeeds); }
                     break;
             }
         }
