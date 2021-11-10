@@ -220,7 +220,6 @@ namespace Eco.Mods.Companies
         {
             SendCompanyMessage(Localizer.Do($"{this.UILink()} is no longer the owner of {deed.UILink()}"));
             deed.Accessors.Clear();
-            deed.Residency.Invitations.InvitationList.Clear();
         }
 
         public void OnNoLongerOwnerOfProperty(IEnumerable<Deed> deeds)
@@ -234,7 +233,6 @@ namespace Eco.Mods.Companies
         private void UpdateDeedAuthList(Deed deed)
         {
             deed.Accessors.Set(AllEmployees);
-            deed.Residency.Invitations.InvitationList.Set(AllEmployees);
         }
 
         private void UpdateBankAccountAuthList(BankAccount bankAccount)
