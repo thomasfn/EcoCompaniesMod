@@ -50,9 +50,17 @@ namespace Eco.Mods.Companies
             {
                 case MoneyGameAction moneyGameAction:
                     var sourceCompany = Company.GetFromBankAccount(moneyGameAction.SourceBankAccount);
-                    sourceCompany?.OnGiveMoney(moneyGameAction);
-                    var destCompany = Company.GetFromBankAccount(moneyGameAction.SourceBankAccount);
-                    destCompany?.OnReceiveMoney(moneyGameAction);
+                    if (sourceCompany != null)
+                    {
+                        sourceCompany.OnGiveMoney(moneyGameAction);
+                        //break;
+                    }
+                    var destCompany = Company.GetFromBankAccount(moneyGameAction.TargetBankAccount);
+                    if (destCompany != null)
+                    {
+                        destCompany.OnReceiveMoney(moneyGameAction);
+                        //break;
+                    }
                     break;
                 case PropertyTransfer propertyTransferAction:
                     var oldOwnerCompany = Company.GetFromLegalPerson(propertyTransferAction.CurrentOwner);
