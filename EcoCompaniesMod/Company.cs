@@ -42,6 +42,8 @@ namespace Eco.Mods.Companies
     [Serialized, ForceCreateView]
     public class Company : SimpleEntry
     {
+        private bool inReceiveMoney, inGiveMoney;
+
         public static Company GetEmployer(User user)
             => Registrars.All<Company>().Where(x => x.IsEmployee(user)).SingleOrDefault();
 
@@ -185,12 +187,48 @@ namespace Eco.Mods.Companies
 
         public void OnReceiveMoney(MoneyGameAction moneyGameAction)
         {
-
+            if (inReceiveMoney) { return; }
+            inReceiveMoney = true;
+            try
+            {
+                var pack = new GameActionPack();
+                pack.AddGameAction(new GameActions.CompanyIncome
+                {
+                    SourceBankAccount = moneyGameAction.SourceBankAccount,
+                    TargetBankAccount = moneyGameAction.TargetBankAccount,
+                    Currency = moneyGameAction.Currency,
+                    CurrencyAmount = moneyGameAction.CurrencyAmount,
+                    ReceiverLegalPerson = LegalPerson,
+                });
+                pack.TryPerform();
+            }
+            finally
+            {
+                inReceiveMoney = false;
+            }
         }
 
         public void OnGiveMoney(MoneyGameAction moneyGameAction)
         {
-
+            if (inGiveMoney) { return; }
+            inGiveMoney = true;
+            try
+            {
+                var pack = new GameActionPack();
+                pack.AddGameAction(new GameActions.CompanyExpense
+                {
+                    SourceBankAccount = moneyGameAction.SourceBankAccount,
+                    TargetBankAccount = moneyGameAction.TargetBankAccount,
+                    Currency = moneyGameAction.Currency,
+                    CurrencyAmount = moneyGameAction.CurrencyAmount,
+                    SenderLegalPerson = LegalPerson,
+                });
+                pack.TryPerform();
+            }
+            finally
+            {
+                inGiveMoney = false;
+            }
         }
 
         private void OnEmployeesChanged()
@@ -220,7 +258,6 @@ namespace Eco.Mods.Companies
         {
             SendCompanyMessage(Localizer.Do($"{this.UILink()} is no longer the owner of {deed.UILink()}"));
             deed.Accessors.Clear();
-            deed.Residency.Invitations.InvitationList.Clear();
         }
 
         public void OnNoLongerOwnerOfProperty(IEnumerable<Deed> deeds)
@@ -234,7 +271,6 @@ namespace Eco.Mods.Companies
         private void UpdateDeedAuthList(Deed deed)
         {
             deed.Accessors.Set(AllEmployees);
-            deed.Residency.Invitations.InvitationList.Set(AllEmployees);
         }
 
         private void UpdateBankAccountAuthList(BankAccount bankAccount)
