@@ -48,25 +48,21 @@ namespace Eco.Mods.Companies
         {
             switch (action)
             {
+                case GameActions.CompanyExpense:
+                case GameActions.CompanyIncome:
+                    // Catch these specifically and noop, to avoid them going into the MoneyGameAction case
+                    break;
                 case MoneyGameAction moneyGameAction:
                     var sourceCompany = Company.GetFromBankAccount(moneyGameAction.SourceBankAccount);
-                    if (sourceCompany != null)
-                    {
-                        sourceCompany.OnGiveMoney(moneyGameAction);
-                        //break;
-                    }
+                    sourceCompany?.OnGiveMoney(moneyGameAction);
                     var destCompany = Company.GetFromBankAccount(moneyGameAction.TargetBankAccount);
-                    if (destCompany != null)
-                    {
-                        destCompany.OnReceiveMoney(moneyGameAction);
-                        //break;
-                    }
+                    destCompany?.OnReceiveMoney(moneyGameAction);
                     break;
                 case PropertyTransfer propertyTransferAction:
                     var oldOwnerCompany = Company.GetFromLegalPerson(propertyTransferAction.CurrentOwner);
-                    if (oldOwnerCompany != null) { oldOwnerCompany.OnNoLongerOwnerOfProperty(propertyTransferAction.RelatedDeeds); }
+                    oldOwnerCompany?.OnNoLongerOwnerOfProperty(propertyTransferAction.RelatedDeeds);
                     var newOwnerCompany = Company.GetFromLegalPerson(propertyTransferAction.NewOwner);
-                    if (newOwnerCompany != null) { newOwnerCompany.OnNowOwnerOfProperty(propertyTransferAction.RelatedDeeds); }
+                    newOwnerCompany?.OnNowOwnerOfProperty(propertyTransferAction.RelatedDeeds);
                     break;
             }
         }
