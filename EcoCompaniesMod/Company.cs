@@ -24,6 +24,7 @@ namespace Eco.Mods.Companies
     using Shared.Localization;
     using Shared.Services;
     using Shared.Items;
+    using Eco.Gameplay.Systems.Messaging.Notifications;
 
     public readonly struct ShareholderHolding
     {
@@ -45,16 +46,16 @@ namespace Eco.Mods.Companies
         private bool inReceiveMoney, inGiveMoney;
 
         public static Company GetEmployer(User user)
-            => Registrars.All<Company>().Where(x => x.IsEmployee(user)).SingleOrDefault();
+            => Registrars.Get<Company>().Where(x => x.IsEmployee(user)).SingleOrDefault();
 
         public static Company GetFromLegalPerson(User user)
-            => Registrars.All<Company>().Where(x => x.LegalPerson == user).SingleOrDefault();
+            => Registrars.Get<Company>().Where(x => x.LegalPerson == user).SingleOrDefault();
 
         public static Company GetFromLegalPerson(IAlias alias)
             => GetFromLegalPerson(alias.OneUser());
 
         public static Company GetFromBankAccount(BankAccount bankAccount)
-            => Registrars.All<Company>().Where(x => x.BankAccount == bankAccount).SingleOrDefault();
+            => Registrars.Get<Company>().Where(x => x.BankAccount == bankAccount).SingleOrDefault();
 
         [Serialized] public User Ceo { get; set; }
 
@@ -72,7 +73,7 @@ namespace Eco.Mods.Companies
         public IEnumerable<Deed> OwnedDeeds
             => LegalPerson == null ? Enumerable.Empty<Deed>() :
                 PropertyManager.GetAllDeeds()
-                    .Where(deed => deed?.Owners?.Contains(LegalPerson) ?? false);
+                    .Where(deed => deed?.Owners?.ContainsUser(LegalPerson) ?? false);
 
         public IEnumerable<ShareholderHolding> Shareholders =>
             Ceo != null ? Enumerable.Repeat(new ShareholderHolding(Ceo, 1.0f), 1) : Enumerable.Empty<ShareholderHolding>();
@@ -91,7 +92,7 @@ namespace Eco.Mods.Companies
             if (LegalPerson == null)
             {
                 string fakeId = Guid.NewGuid().ToString();
-                LegalPerson = UserManager.CreateNewUser(fakeId, fakeId, $"{Name} Legal Person");
+                LegalPerson = UserManager.Obj.PrepareNewUser(fakeId, fakeId, $"{Name} Legal Person");
                 LegalPerson.Initialize();
             }
 
@@ -117,7 +118,7 @@ namespace Eco.Mods.Companies
                 return;
             }
             InviteList.Add(user);
-            user.MailLoc($"You have been invited to join {this.UILink()}. Type '/company join {Name}' to accept.", DefaultChatTags.Government);
+            user.MailLoc($"You have been invited to join {this.UILink()}. Type '/company join {Name}' to accept.", NotificationCategory.Government);
             SendCompanyMessage(Localizer.Do($"{invoker?.User.UILinkNullSafe()} has invited {user.UILink()} to join the company."));
         }
 
@@ -286,17 +287,26 @@ namespace Eco.Mods.Companies
             OnEmployeesChanged();
         }
 
-        public void SendCompanyMessage(LocString message, DefaultChatTags defaultChatTags = DefaultChatTags.Government, MessageCategory messageCategory = MessageCategory.Chat)
+        public void SendCompanyMessage(LocString message, NotificationCategory notificationCategory = NotificationCategory.Government, NotificationStyle notificationStyle = NotificationStyle.Chat)
         {
             foreach (var user in AllEmployees)
             {
-                ChatManager.ServerMessageToAlias(message, user, defaultChatTags, messageCategory);
+                NotificationManager.ServerMessageToPlayer(
+                    message,
+                    user,
+                    notificationCategory,
+                    notificationStyle
+                );
             }
         }
 
         private static void SendGlobalMessage(LocString message)
         {
-            ChatManager.ServerMessageToAll(message, DefaultChatTags.Government, MessageCategory.Chat);
+            NotificationManager.ServerMessageToAll(
+                message,
+                NotificationCategory.Government,
+                NotificationStyle.Chat
+            );
         }
 
         public bool IsEmployee(User user)

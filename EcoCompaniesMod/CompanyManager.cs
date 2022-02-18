@@ -29,7 +29,7 @@ namespace Eco.Mods.Companies
             }
             if (name.Length > 50)
             {
-                invoker?.OkBoxLoc($"Company name is too long, must be at most 3 characters long");
+                invoker?.OkBoxLoc($"Company name is too long, must be at most 50 characters long");
                 return false;
             }
             return true;
