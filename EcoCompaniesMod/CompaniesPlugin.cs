@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Reflection;
 using System.Collections.Generic;
 
@@ -17,29 +18,31 @@ namespace Eco.Mods.Companies
     using Shared.Utils;
     using Shared.Serialization;
     using Shared.Networking;
+    using Shared.Services;
 
     using Gameplay.Players;
-    using Gameplay.Systems.Chat;
     using Gameplay.Systems.TextLinks;
     using Gameplay.Civics.GameValues;
     using Gameplay.Aliases;
     using Gameplay.Property;
+    using Gameplay.Systems.Messaging.Chat;
+    using Gameplay.Systems.Messaging.Chat.Commands;
+    using Gameplay.Systems.Messaging.Notifications;
 
     using Simulation.Time;
-    using System.Runtime.CompilerServices;
 
     [Serialized]
     public class CompaniesData : Singleton<CompaniesData>, IStorage
     {
         public IPersistent StorageHandle { get; set; }
 
-        [Serialized] public Registrar Companies = new Registrar();
+        [Serialized] public Registrar<Company> Companies = new ();
 
         public readonly PeriodicUpdateConfig UpdateTimer = new PeriodicUpdateConfig(true);
 
         public void InitializeRegistrars()
         {
-            this.Companies.Init(Localizer.DoStr("Companies"), true, typeof(Company), CompaniesPlugin.Obj, Localizer.DoStr("Companies"));
+            this.Companies.PreInit(Localizer.DoStr("Companies"), true, CompaniesPlugin.Obj, Localizer.DoStr("Companies"));
         }
 
         public void Initialize()
@@ -190,7 +193,11 @@ namespace Eco.Mods.Companies
             name = name.Trim();
             if (!CompanyManager.Obj.ValidateName(user.Player, name)) { return; }
             var company = CompanyManager.Obj.CreateNew(user, name);
-            ChatManager.ServerMessageToAll(Localizer.Do($"{user.UILink()} has founded the company {company.UILink()}!"), Shared.Services.DefaultChatTags.Government, Shared.Services.MessageCategory.Chat);
+            NotificationManager.ServerMessageToAll(
+                Localizer.Do($"{user.UILink()} has founded the company {company.UILink()}!"),
+                NotificationCategory.Government,
+                NotificationStyle.Chat
+            );
         }
 
         [ChatSubCommand("Company", "Invite another player to your company.", ChatAuthorizationLevel.User)]
