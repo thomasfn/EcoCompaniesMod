@@ -67,7 +67,7 @@ namespace Eco.Mods.Companies
             }
         }
 
-        public Result ShouldOverrideAuth(GameAction action)
+        public LazyResult ShouldOverrideAuth(GameAction action)
         {
             if (action is PropertyTransfer propertyTransferAction)
             {
@@ -83,19 +83,19 @@ namespace Eco.Mods.Companies
                     }
                     deedOwnerCompany = ownerCompany;
                 }
-                if (deedOwnerCompany == null) { return null; }
-                if (!deedOwnerCompany.IsEmployee(propertyTransferAction.Citizen)) { return null; }
+                if (deedOwnerCompany == null) { return LazyResult.FailedNoMessage; }
+                if (!deedOwnerCompany.IsEmployee(propertyTransferAction.Citizen)) { return LazyResult.FailedNoMessage; }
                 return AuthManagerExtensions.SpecialAccessResult(deedOwnerCompany);
             }
             if (action is ClaimOrUnclaimProperty claimOrUnclaimPropertyAction)
             {
                 // If the deed is company property, allow an employee to claim or unclaim it
                 var deedOwnerCompany = Company.GetFromLegalPerson(claimOrUnclaimPropertyAction.PreviousDeedOwner);
-                if (deedOwnerCompany == null) { return null; }
-                if (!deedOwnerCompany.IsEmployee(claimOrUnclaimPropertyAction.Citizen)) { return null; }
+                if (deedOwnerCompany == null) { return LazyResult.FailedNoMessage; }
+                if (!deedOwnerCompany.IsEmployee(claimOrUnclaimPropertyAction.Citizen)) { return LazyResult.FailedNoMessage; }
                 return AuthManagerExtensions.SpecialAccessResult(deedOwnerCompany);
             }
-            return null;
+            return LazyResult.FailedNoMessage;
         }
     }
 }

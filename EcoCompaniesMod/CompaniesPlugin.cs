@@ -292,6 +292,29 @@ namespace Eco.Mods.Companies
             DeedEditingUtil.EditInMap(deed, user);
         }
 
+        [ChatSubCommand("Company", "Transfers ownership of the company owned deed that you're currently standing in to yourself.", ChatAuthorizationLevel.User)]
+        public static void TakeDeed(User user)
+        {
+            var company = Companies.Company.GetEmployer(user);
+            if (company == null)
+            {
+                user.Player?.OkBoxLoc($"Couldn't take company deed as you're not currently employed");
+                return;
+            }
+            var deed = PropertyManager.GetDeedWorldPos(user.Position.XZ.Floor);
+            if (deed == null)
+            {
+                user.Player?.OkBoxLoc($"Couldn't take company deed as you're not standing on one");
+                return;
+            }
+            if (!company.OwnedDeeds.Contains(deed))
+            {
+                user.Player?.OkBoxLoc($"Couldn't take company deed as it's not owned by {company.MarkedUpName}");
+                return;
+            }
+            DeedEditingUtil.EditInMap(deed, user);
+        }
+
         #endregion
     }
 }
