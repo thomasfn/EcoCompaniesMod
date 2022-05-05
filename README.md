@@ -1,5 +1,5 @@
 # Eco Companies
-A server mod for Eco 9.4 that extends the law and economy system with player controllable companies.
+A server mod for Eco 9.5 that extends the law and economy system with player controllable companies.
 
 ## Installation
 1. Download `EcoCompaniesMod.dll` from the [latest release](https://github.com/thomasfn/EcoCompaniesMod/releases).
@@ -102,7 +102,7 @@ Gets if the given citizen is the generated legal person user for a company.
 
 ### Linux
 
-1. Run `ECO_BRANCH="release" MODKIT_VERSION="0.9.4.3-beta" fetch-eco-reference-assemblies.sh` (change the modkit branch and version as needed)
+1. Run `ECO_BRANCH="release" MODKIT_VERSION="0.9.5.0-beta" fetch-eco-reference-assemblies.sh` (change the modkit branch and version as needed)
 2. Enter the `EcoCompaniesMod` directory and run:
 `dotnet restore`
 `dotnet build`
