@@ -19,13 +19,13 @@ namespace Eco.Mods.Companies
     using Shared.Serialization;
     using Shared.Networking;
     using Shared.Services;
+    using Shared.Math;
 
     using Gameplay.Players;
     using Gameplay.Systems.TextLinks;
     using Gameplay.Civics.GameValues;
     using Gameplay.Aliases;
     using Gameplay.Property;
-    using Gameplay.Systems.Messaging.Chat;
     using Gameplay.Systems.Messaging.Chat.Commands;
     using Gameplay.Systems.Messaging.Notifications;
 
@@ -52,7 +52,7 @@ namespace Eco.Mods.Companies
     }
 
     [Localized, LocDisplayName(nameof(CompaniesPlugin)), Priority(PriorityAttribute.High)]
-    public class CompaniesPlugin : Singleton<CompaniesPlugin>, IModKitPlugin, IInitializablePlugin, IChatCommandHandler, ISaveablePlugin, IContainsRegistrars
+    public class CompaniesPlugin : Singleton<CompaniesPlugin>, IModKitPlugin, IInitializablePlugin, ISaveablePlugin, IContainsRegistrars
     {
         private static readonly IDictionary<Type, GameValueType> gameValueTypeCache = new Dictionary<Type, GameValueType>();
 
@@ -172,6 +172,7 @@ namespace Eco.Mods.Companies
 
         public void InitializeRegistrars(TimedTask timer) => data.InitializeRegistrars();
         public string GetDisplayText() => string.Empty;
+        public string GetCategory() => Localizer.DoStr("Civics");
         public string GetStatus() => string.Empty;
         public override string ToString() => Localizer.DoStr("Companies");
         public void SaveAll() => StorageManager.Obj.MarkDirty(data);
@@ -278,7 +279,7 @@ namespace Eco.Mods.Companies
                 user.Player?.OkBoxLoc($"Couldn't edit company deed as you're not currently employed");
                 return;
             }
-            var deed = PropertyManager.GetDeedWorldPos(user.Position.XZ.Floor);
+            var deed = PropertyManager.GetDeedWorldPos(new Vector2i((int)user.Position.X, (int)user.Position.Y));
             if (deed == null)
             {
                 user.Player?.OkBoxLoc($"Couldn't edit company deed as you're not standing on one");
