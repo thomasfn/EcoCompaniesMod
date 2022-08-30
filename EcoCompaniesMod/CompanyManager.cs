@@ -12,6 +12,7 @@ namespace Eco.Mods.Companies
 
     using Shared.Utils;
     using Eco.Gameplay.Auth;
+    using Eco.Gameplay.Aliases;
 
     public class CompanyManager : Singleton<CompanyManager>, IGameActionAware
     {
@@ -67,7 +68,7 @@ namespace Eco.Mods.Companies
             }
         }
 
-        public LazyResult ShouldOverrideAuth(GameAction action)
+        public LazyResult ShouldOverrideAuth(IAlias alias, IOwned property, GameAction action)
         {
             if (action is PropertyTransfer propertyTransferAction)
             {
