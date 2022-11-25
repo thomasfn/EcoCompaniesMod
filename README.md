@@ -1,5 +1,5 @@
 # Eco Companies
-A server mod for Eco 9.6 that extends the law and economy system with player controllable companies.
+A server mod for Eco 9.7 that extends the law and economy system with player controllable companies.
 
 ## Installation
 1. Download `EcoCompaniesMod.dll` from the [latest release](https://github.com/thomasfn/EcoCompaniesMod/releases).
