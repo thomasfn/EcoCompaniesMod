@@ -54,7 +54,7 @@ namespace Eco.Mods.Companies
     [Localized, LocDisplayName(nameof(CompaniesPlugin)), Priority(PriorityAttribute.High)]
     public class CompaniesPlugin : Singleton<CompaniesPlugin>, IModKitPlugin, IInitializablePlugin, ISaveablePlugin, IContainsRegistrars
     {
-        private static readonly IDictionary<Type, GameValueType> gameValueTypeCache = new Dictionary<Type, GameValueType>();
+        private static readonly Dictionary<Type, GameValueType> gameValueTypeCache = new Dictionary<Type, GameValueType>();
 
         public readonly CompanyManager CompanyManager;
 
