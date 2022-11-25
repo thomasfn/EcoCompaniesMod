@@ -356,7 +356,7 @@ namespace Eco.Mods.Companies
 
         //public override void OnLinkClicked(TooltipContext context) => TaxCard.GetOrCreateForUser(LegalPerson).OpenReport(context.Player);
         //public override LocString LinkClickedTooltipContent(TooltipContext context) => Localizer.DoStr("Click to view tax report.");
-        public override LocString UILinkContent() => TextLoc.ItemIcon("Contract", Localizer.DoStr(this.Name));
+        public override LocString UILinkContent() => TextLoc.Icon("Contract", Localizer.DoStr(this.Name));
 
         [Tooltip(100)]
         public override LocString Description()
