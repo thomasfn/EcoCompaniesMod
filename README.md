@@ -1,5 +1,5 @@
 # Eco Companies
-A server mod for Eco 9.7 that extends the law and economy system with player controllable companies.
+A server mod for Eco 10.0 that extends the law and economy system with player controllable companies.
 
 ## Installation
 1. Download `EcoCompaniesMod.dll` from the [latest release](https://github.com/thomasfn/EcoCompaniesMod/releases).
@@ -96,17 +96,17 @@ Gets if the given citizen is the generated legal person user for a company.
 
 1. Login to the [Eco Website](https://play.eco/) and download the latest modkit
 2. Extract the modkit and copy the dlls from `ReferenceAssemblies` to `eco-dlls` in the root directory (create the folder if it doesn't exist)
-3. Open `EcoCompaniesMod.sln` in Visual Studio 2019
+3. Open `EcoCompaniesMod.sln` in Visual Studio 2019/2022
 4. Build the `EcoCompaniesMod` project in Visual Studio
-5. Find the artifact in `EcoCompaniesMod\bin\{Debug|Release}\net6.0`
+5. Find the artifact in `EcoCompaniesMod\bin\{Debug|Release}\net7.0`
 
 ### Linux
 
-1. Run `ECO_BRANCH="release" MODKIT_VERSION="0.9.6.1-beta" fetch-eco-reference-assemblies.sh` (change the modkit branch and version as needed)
+1. Run `ECO_BRANCH="release" MODKIT_VERSION="0.10.0.0-beta" fetch-eco-reference-assemblies.sh` (change the modkit branch and version as needed)
 2. Enter the `EcoCompaniesMod` directory and run:
 `dotnet restore`
 `dotnet build`
-3. Find the artifact in `EcoCompaniesMod/bin/{Debug|Release}/net6.0`
+3. Find the artifact in `EcoCompaniesMod/bin/{Debug|Release}/net7.0`
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)
