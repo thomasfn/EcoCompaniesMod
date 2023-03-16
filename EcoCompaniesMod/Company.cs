@@ -13,9 +13,11 @@ namespace Eco.Mods.Companies
     using Gameplay.Systems.Tooltip;
     using Gameplay.Players;
     using Gameplay.Systems.TextLinks;
+    using Gameplay.Systems.Messaging.Notifications;
+    using Gameplay.Systems.NewTooltip;
+    using Gameplay.Items;
     using Gameplay.Economy;
     using Gameplay.GameActions;
-    using Gameplay.Systems.Chat;
     using Gameplay.Aliases;
     using Gameplay.Property;
     using Gameplay.Civics.GameValues;
@@ -24,7 +26,8 @@ namespace Eco.Mods.Companies
     using Shared.Localization;
     using Shared.Services;
     using Shared.Items;
-    using Eco.Gameplay.Systems.Messaging.Notifications;
+    using Eco.Shared.IoC;
+    using System.Security.Principal;
 
     public readonly struct ShareholderHolding
     {
@@ -41,7 +44,7 @@ namespace Eco.Mods.Companies
     }
 
     [Serialized, ForceCreateView]
-    public class Company : SimpleEntry
+    public class Company : SimpleEntry, IHasIcon
     {
         private bool inReceiveMoney, inGiveMoney;
 
@@ -66,6 +69,8 @@ namespace Eco.Mods.Companies
         [Serialized, NotNull] public ThreadSafeHashSet<User> Employees { get; set; } = new ThreadSafeHashSet<User>();
 
         [Serialized, NotNull] public ThreadSafeHashSet<User> InviteList { get; set; } = new ThreadSafeHashSet<User>();
+
+        public override string IconName => $"Contract";
 
         public IEnumerable<User> AllEmployees
             => (Ceo != null ? Employees?.Prepend(Ceo) : Employees) ?? Enumerable.Empty<User>();
@@ -119,6 +124,7 @@ namespace Eco.Mods.Companies
             }
             InviteList.Add(user);
             OnInviteListChanged();
+            MarkPerUserTooltipDirty(user);
             user.MailLoc($"You have been invited to join {this.UILink()}. Type '/company join {Name}' to accept.", NotificationCategory.Government);
             SendCompanyMessage(Localizer.Do($"{invoker?.User.UILinkNullSafe()} has invited {user.UILink()} to join the company."));
         }
@@ -132,6 +138,7 @@ namespace Eco.Mods.Companies
             }
             InviteList.Remove(user);
             OnInviteListChanged();
+            MarkPerUserTooltipDirty(user);
             SendCompanyMessage(Localizer.Do($"{invoker?.User.UILinkNullSafe()} has withdrawn the invitation for {user.UILink()} to join the company."));
         }
 
@@ -158,6 +165,7 @@ namespace Eco.Mods.Companies
             {
                 if (!Employees.Remove(user)) { return; }
                 OnEmployeesChanged();
+                MarkPerUserTooltipDirty(user);
                 SendCompanyMessage(Localizer.Do($"{invoker?.User.UILinkNullSafe()} has fired {user.UILink()} from the company."));
             });
             pack.TryPerform();
@@ -187,6 +195,7 @@ namespace Eco.Mods.Companies
                 if (!InviteList.Remove(user)) { return; }
                 if (!Employees.Add(user)) { return; }
                 OnEmployeesChanged();
+                MarkPerUserTooltipDirty(user);
                 SendCompanyMessage(Localizer.Do($"{user.UILink()} has joined the company."));
             });
             pack.TryPerform();
@@ -215,6 +224,7 @@ namespace Eco.Mods.Companies
             {
                 if (!Employees.Remove(user)) { return; }
                 OnEmployeesChanged();
+                MarkPerUserTooltipDirty(user);
                 SendCompanyMessage(Localizer.Do($"{user.UILink()} has resigned from the company."));
             });
             pack.TryPerform();
@@ -269,7 +279,7 @@ namespace Eco.Mods.Companies
         private void OnInviteListChanged()
         {
             MarkDirty();
-            this.Changed(nameof(this.Description));
+            MarkTooltipDirty();
         }
 
         private void OnEmployeesChanged()
@@ -280,7 +290,7 @@ namespace Eco.Mods.Companies
             }
             UpdateBankAccountAuthList(BankAccount);
             MarkDirty();
-            this.Changed(nameof(this.Description));
+            MarkTooltipDirty();
         }
 
         public void OnNowOwnerOfProperty(Deed deed)
@@ -322,6 +332,16 @@ namespace Eco.Mods.Companies
             bankAccount.DualPermissions.UserSet.Set(AllEmployees);
         }
 
+        private void MarkTooltipDirty()
+        {
+            ServiceHolder<ITooltipSubscriptions>.Obj.MarkTooltipPartDirty(nameof(Tooltip), instance: this);
+        }
+
+        private void MarkPerUserTooltipDirty(User user)
+        {
+            ServiceHolder<ITooltipSubscriptions>.Obj.MarkTooltipPartDirty(nameof(PerUserTooltip), instance: this, user: user);
+        }
+
         public void ChangeCeo(User newCeo)
         {
             Ceo = newCeo;
@@ -354,12 +374,10 @@ namespace Eco.Mods.Companies
         public bool IsEmployee(User user)
             => AllEmployees.Contains(user);
 
-        //public override void OnLinkClicked(TooltipContext context) => TaxCard.GetOrCreateForUser(LegalPerson).OpenReport(context.Player);
-        //public override LocString LinkClickedTooltipContent(TooltipContext context) => Localizer.DoStr("Click to view tax report.");
-        public override LocString UILinkContent() => TextLoc.Icon("Contract", Localizer.DoStr(this.Name));
+        public override LocString CreatorText(Player reader) => this.Creator != null ? Localizer.Do($"Company founded by {this.Creator.MarkedUpName}.") : LocString.Empty;
 
-        [Tooltip(100)]
-        public override LocString Description()
+        [NewTooltip(CacheAs.Instance, 100)]
+        public LocString Tooltip()
         {
             var sb = new LocStringBuilder();
             sb.Append(TextLoc.HeaderLoc($"CEO: "));
@@ -373,6 +391,28 @@ namespace Eco.Mods.Companies
             sb.AppendLine(TextLoc.HeaderLoc($"Shareholders:"));
             sb.AppendLine(this.Shareholders.Any() ? this.Shareholders.Select(x => x.Description).InlineFoldoutListLoc("holding", TooltipOrigin.None, 5) : Localizer.DoStr("None."));
             return sb.ToLocString();
+        }
+
+        [NewTooltip(CacheAs.Instance | CacheAs.User, 110)]
+        public LocString PerUserTooltip(User user)
+        {
+            var sb = new LocStringBuilder();
+            if (user == Ceo)
+            {
+                return Localizer.DoStr("You are the CEO of this company.");
+            }
+            else if (IsEmployee(user))
+            {
+                return Localizer.DoStr("You are an employee of this company.");
+            }
+            else if (InviteList.Contains(user))
+            {
+                return Localizer.DoStr("You have been invited to join this company.");
+            }
+            else
+            {
+                return Localizer.DoStr("You are not an employee of this company.");
+            }
         }
     }
 }
