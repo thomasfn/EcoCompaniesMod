@@ -168,7 +168,7 @@ namespace Eco.Mods.Companies
                 MarkPerUserTooltipDirty(user);
                 SendCompanyMessage(Localizer.Do($"{invoker?.User.UILinkNullSafe()} has fired {user.UILink()} from the company."));
             });
-            pack.TryPerform();
+            pack.TryPerform(null);
         }
 
         public void TryJoin(Player invoker, User user)
@@ -198,7 +198,7 @@ namespace Eco.Mods.Companies
                 MarkPerUserTooltipDirty(user);
                 SendCompanyMessage(Localizer.Do($"{user.UILink()} has joined the company."));
             });
-            pack.TryPerform();
+            pack.TryPerform(null);
         }
 
         public void TryLeave(Player invoker, User user)
@@ -227,7 +227,7 @@ namespace Eco.Mods.Companies
                 MarkPerUserTooltipDirty(user);
                 SendCompanyMessage(Localizer.Do($"{user.UILink()} has resigned from the company."));
             });
-            pack.TryPerform();
+            pack.TryPerform(null);
         }
 
         public void OnReceiveMoney(MoneyGameAction moneyGameAction)
@@ -245,7 +245,7 @@ namespace Eco.Mods.Companies
                     CurrencyAmount = moneyGameAction.CurrencyAmount,
                     ReceiverLegalPerson = LegalPerson,
                 });
-                pack.TryPerform();
+                pack.TryPerform(null);
             }
             finally
             {
@@ -268,7 +268,7 @@ namespace Eco.Mods.Companies
                     CurrencyAmount = moneyGameAction.CurrencyAmount,
                     SenderLegalPerson = LegalPerson,
                 });
-                pack.TryPerform();
+                pack.TryPerform(null);
             }
             finally
             {
