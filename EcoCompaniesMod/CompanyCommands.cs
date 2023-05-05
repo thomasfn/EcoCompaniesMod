@@ -1,17 +1,14 @@
-﻿using System;
-using System.Linq;
+﻿using System.Threading.Tasks;
 
 namespace Eco.Mods.Companies
 {
     using Shared.Localization;
-    using Shared.Services;
-    using Shared.Math;
 
     using Gameplay.Players;
     using Gameplay.Systems.TextLinks;
-    using Gameplay.Property;
     using Gameplay.Systems.Messaging.Chat.Commands;
-    using Gameplay.Systems.Messaging.Notifications;
+    using Eco.Gameplay.Settlements;
+    using Eco.Core.Controller;
 
     [ChatCommandHandler]
     public static class CompanyCommands
@@ -20,22 +17,28 @@ namespace Eco.Mods.Companies
         public static void Company() { }
 
         [ChatSubCommand("Company", "Found a new company.", ChatAuthorizationLevel.User)]
-        public static void Create(User user, string name)
+        public static async Task Create(User user, string name)
         {
-            var existingEmployer = Companies.Company.GetEmployer(user);
-            if (existingEmployer != null)
+            var createAttempt = CompanyManager.Obj.CreateNewDryRun(user, name.Trim(), out var errorMessage);
+            if (!createAttempt.IsValid)
             {
-                user.Player?.OkBoxLoc($"Couldn't found a company as you're already a member of {existingEmployer}");
+                user.Player?.OkBox(new LocString(errorMessage));
                 return;
             }
-            name = name.Trim();
-            if (!CompanyManager.Obj.ValidateName(user.Player, name)) { return; }
-            var company = CompanyManager.Obj.CreateNew(user, name);
-            NotificationManager.ServerMessageToAll(
-                Localizer.Do($"{user.UILink()} has founded the company {company.UILink()}!"),
-                NotificationCategory.Government,
-                NotificationStyle.Chat
-            );
+            if (user.Player == null)
+            {
+                CompanyManager.Obj.CreateNew(user, name, createAttempt, out errorMessage);
+                return;
+            }
+            var confirmed = await user.Player.ConfirmBoxLoc($"{createAttempt.ToLocString()}\nThis action is irreversible.\nDo you wish to proceed?");
+            if (!confirmed) { return; }
+            var company = CompanyManager.Obj.CreateNew(user, name, createAttempt, out errorMessage);
+            if (company == null)
+            {
+                user.Player?.OkBox(new LocString(errorMessage));
+                return;
+            }
+            user.Player?.OkBoxLoc($"You have founded {company.UILink()}.");
         }
 
         [ChatSubCommand("Company", "Invite another player to your company.", ChatAuthorizationLevel.User)]
@@ -44,15 +47,13 @@ namespace Eco.Mods.Companies
             var company = Companies.Company.GetEmployer(user);
             if (company == null)
             {
-                user.Player?.OkBoxLoc($"Couldn't send company invite as you are not a CEO of any company");
+                user.OkBoxLoc($"Couldn't send company invite as you are not a CEO of any company");
                 return;
             }
-            if (user != company.Ceo)
+            if (!company.TryInvite(user, otherUser, out var errorMessage))
             {
-                user.Player?.OkBoxLoc($"Couldn't send company invite as you are not the CEO of {company.MarkedUpName}");
-                return;
+                user.OkBox(errorMessage);
             }
-            company.TryInvite(user.Player, otherUser);
         }
 
         [ChatSubCommand("Company", "Withdraws an invitation for another player to your company.", ChatAuthorizationLevel.User)]
@@ -61,15 +62,13 @@ namespace Eco.Mods.Companies
             var company = Companies.Company.GetEmployer(user);
             if (company == null)
             {
-                user.Player?.OkBoxLoc($"Couldn't withdraw company invite as you are not a CEO of any company");
+                user.OkBoxLoc($"Couldn't withdraw company invite as you are not a CEO of any company");
                 return;
             }
-            if (user != company.Ceo)
+            if (!company.TryUninvite(user, otherUser, out var errorMessage))
             {
-                user.Player?.OkBoxLoc($"Couldn't withdraw company invite as you are not the CEO of {company.MarkedUpName}");
-                return;
+                user.OkBox(errorMessage);
             }
-            company.TryUninvite(user.Player, otherUser);
         }
 
         [ChatSubCommand("Company", "Removes an employee from your company.", ChatAuthorizationLevel.User)]
@@ -78,21 +77,23 @@ namespace Eco.Mods.Companies
             var company = Companies.Company.GetEmployer(user);
             if (company == null)
             {
-                user.Player?.OkBoxLoc($"Couldn't fire employee as you are not a CEO of any company");
+                user.OkBoxLoc($"Couldn't fire employee as you are not a CEO of any company");
                 return;
             }
-            if (user != company.Ceo)
+            if (!company.TryFire(user, otherUser, out var errorMessage))
             {
-                user.Player?.OkBoxLoc($"Couldn't fire employee as you are not the CEO of {company.MarkedUpName}");
-                return;
+                user.OkBox(errorMessage);
             }
-            company.TryFire(user.Player, otherUser);
         }
 
         [ChatSubCommand("Company", "Accepts an invite to join a company.", ChatAuthorizationLevel.User)]
         public static void Join(User user, Company company)
         {
-            company.TryJoin(user.Player, user);
+            if (!company.TryJoin(user, out var errorMessage))
+            {
+                user.OkBox(errorMessage);
+                return;
+            }
         }
 
         [ChatSubCommand("Company", "Resigns you from your current company.", ChatAuthorizationLevel.User)]
@@ -101,13 +102,41 @@ namespace Eco.Mods.Companies
             var currentEmployer = Companies.Company.GetEmployer(user);
             if (currentEmployer == null)
             {
-                user.Player?.OkBoxLoc($"Couldn't resign from your company as you're not currently employed");
+                user.OkBoxLoc($"Couldn't resign from your company as you're not currently employed");
                 return;
             }
-            currentEmployer.TryLeave(user.Player, user);
+            if (!currentEmployer.TryLeave(user, out var errorMessage))
+            {
+                user.OkBox(errorMessage);
+                return;
+            }
         }
 
-        [ChatSubCommand("Company", "Edits the company owned deed that you're currently standing in.", ChatAuthorizationLevel.User)]
+        [ChatSubCommand("Company", "Sets the currently held claim tool to the company HQ deed.", ChatAuthorizationLevel.User)]
+        public static void Claim(User user)
+        {
+            var currentEmployer = Companies.Company.GetEmployer(user);
+            if (currentEmployer == null)
+            {
+                user.OkBoxLoc($"Couldn't set claim mode as you're not currently employed");
+                return;
+            }
+            if (currentEmployer.HQDeed == null)
+            {
+                user.OkBoxLoc($"Couldn't set claim mode as {currentEmployer.MarkedUpName} does not currently have a HQ");
+                return;
+            }
+            if (user.SelectedItem is not ClaimToolBaseItem claimTool)
+            {
+                user.OkBoxLoc($"Couldn't set claim mode as you're not currently holding a claim tool");
+                return;
+            }
+            claimTool.Deed = currentEmployer.HQDeed;
+            claimTool.Changed(nameof(claimTool.Deed));
+            user.MsgLoc($"Your claim tool has been set to {currentEmployer.HQDeed.UILink()}.");
+        }
+
+        /*[ChatSubCommand("Company", "Edits the company owned deed that you're currently standing in.", ChatAuthorizationLevel.User)]
         public static void EditDeed(User user)
         {
             var company = Companies.Company.GetEmployer(user);
@@ -128,6 +157,6 @@ namespace Eco.Mods.Companies
                 return;
             }
             DeedEditingUtil.EditInMap(deed, user);
-        }
+        }*/
     }
 }
