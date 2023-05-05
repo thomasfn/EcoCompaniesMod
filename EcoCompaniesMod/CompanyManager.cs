@@ -25,6 +25,7 @@ namespace Eco.Mods.Companies
     using Eco.Gameplay.Settlements.Civics;
     using Eco.Gameplay.Settlements.ClaimStakes;
     using System.Threading.Tasks;
+    using Eco.Gameplay.Civics.LegalActions;
 
     public partial class CompanyManager : Singleton<CompanyManager>, IGameActionAware
     {

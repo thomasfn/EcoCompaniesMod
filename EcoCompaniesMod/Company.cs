@@ -77,6 +77,10 @@ namespace Eco.Mods.Companies
 
         public int HQSize => ServiceHolder<SettlementConfig>.Obj.BasePlotsOnHomesteadClaimStake * (CompaniesPlugin.Obj.Config.PropertyLimitsEnabled ? AllEmployees.Count() : 1);
 
+        public Settlement DirectCitizenship => LegalPerson.DirectCitizenship;
+
+        public IEnumerable<Settlement> AllCitizenships => LegalPerson.AllCitizenships;
+
         [Serialized, NotNull] public ThreadSafeHashSet<User> Employees { get; set; } = new ThreadSafeHashSet<User>();
 
         [Serialized, NotNull] public ThreadSafeHashSet<User> InviteList { get; set; } = new ThreadSafeHashSet<User>();
@@ -120,6 +124,8 @@ namespace Eco.Mods.Companies
                 UpdateBankAccountAuthList(BankAccount);
             }
         }
+
+        #region Employee Management
 
         public bool TryInvite(User invoker, User target, out LocString errorMessage)
         {
@@ -271,6 +277,75 @@ namespace Eco.Mods.Companies
             return true;
         }
 
+        #endregion
+
+        #region Citizenship Management
+
+        public bool TryApplyToSettlement(User invoker, Settlement target, out LocString errorMessage)
+        {
+            if (invoker != Ceo)
+            {
+                errorMessage = Localizer.DoStr($"Couldn't apply to join {target.MarkedUpName} as you are not the CEO of {MarkedUpName}");
+                return false;
+            }
+            if (!target.Citizenship.DirectCitizenRoster.CanApply(LegalPerson))
+            {
+                errorMessage = Localizer.DoStr($"Couldn't apply to join {target.MarkedUpName} as {MarkedUpName} has already applied or been invited, or {target.MarkedUpName} is not currently accepting new applicants.");
+                return false;
+            }
+            target.Citizenship.DirectCitizenRoster.Apply(LegalPerson);
+            UpdateCitizenships();
+            SendCompanyMessage(Localizer.Do($"{MarkedUpName} has applied to join {target.UILink()}."));
+            errorMessage = LocString.Empty;
+            return true;
+        }
+
+        public bool TryJoinSettlement(User invoker, Settlement target, out LocString errorMessage)
+        {
+            if (invoker != Ceo)
+            {
+                errorMessage = Localizer.DoStr($"Couldn't try to join {target.MarkedUpName} as you are not the CEO of {MarkedUpName}");
+                return false;
+            }
+            if (!target.Citizenship.DirectCitizenRoster.CanAcceptInvitation(LegalPerson))
+            {
+                errorMessage = Localizer.DoStr($"Couldn't try to join {target.MarkedUpName} as {MarkedUpName} has not been invited.");
+                return false;
+            }
+            target.Citizenship.DirectCitizenRoster.AcceptInvitation(LegalPerson);
+            UpdateCitizenships();
+            SendCompanyMessage(Localizer.Do($"{MarkedUpName} has joined {target.UILink()}."));
+            errorMessage = LocString.Empty;
+            return true;
+        }
+
+        public bool TryLeaveSettlement(User invoker, out LocString errorMessage)
+        {
+            if (DirectCitizenship == null)
+            {
+                errorMessage = Localizer.DoStr($"{MarkedUpName} is not currently part of any settlement.");
+                return false;
+            }
+            if (invoker != Ceo)
+            {
+                errorMessage = Localizer.DoStr($"Couldn't leave {DirectCitizenship.MarkedUpName} from {MarkedUpName} as you are not the CEO of {MarkedUpName}");
+                return false;
+            }
+            if (!DirectCitizenship.Citizenship.DirectCitizenRoster.CanLeave(LegalPerson))
+            {
+                errorMessage = Localizer.DoStr($"Couldn't leave {DirectCitizenship.MarkedUpName} as {MarkedUpName} is not currently a citizen.");
+                return false;
+            }
+            var settlement = DirectCitizenship;
+            settlement.Citizenship.DirectCitizenRoster.Leave(LegalPerson);
+            UpdateCitizenships();
+            SendCompanyMessage(Localizer.Do($"{MarkedUpName} has left {settlement.UILink()}."));
+            errorMessage = LocString.Empty;
+            return true;
+        }
+
+        #endregion
+
         public void OnReceiveMoney(MoneyGameAction moneyGameAction)
         {
             if (inReceiveMoney) { return; }
@@ -332,6 +407,39 @@ namespace Eco.Mods.Companies
             UpdateBankAccountAuthList(BankAccount);
         }
 
+        public void UpdateCitizenships()
+        {
+            foreach (var user in AllEmployees)
+            {
+                UpdateCitizenship(user);
+            }
+        }
+
+        private void UpdateCitizenship(User user)
+        {
+            if (DirectCitizenship != null)
+            {
+                // Company has a citizenship, ensure user inherits it
+                if (user.DirectCitizenship == null)
+                {
+                    DirectCitizenship.Citizenship.DirectCitizenRoster.AddToRoster(null, user, true);
+                }
+                else if (user.DirectCitizenship != DirectCitizenship)
+                {
+                    user.DirectCitizenship.Citizenship.DirectCitizenRoster.Leave(user, true);
+                    DirectCitizenship.Citizenship.DirectCitizenRoster.AddToRoster(null, user, true);
+                }
+            }
+            else
+            {
+                // Company has no citizenship, ensure user inherits it
+                if (user.DirectCitizenship != null)
+                {
+                    user.DirectCitizenship.Citizenship.DirectCitizenRoster.Leave(user, true);
+                }
+            }
+        }
+
         private void OnEmployeesChanged()
         {
             UpdateAllAuthLists();
@@ -357,6 +465,7 @@ namespace Eco.Mods.Companies
                         typeof(HomesteadFoundationComponent).GetMethod("UpdateTitleAndDesc", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(foundationComponent, null);
                     }
                 }
+                SetCitizenOf(deed.InfluencingSettlement);
                 UpdateHQSize();
                 SendCompanyMessage(Localizer.Do($"{this.UILink()} is now the owner of {deed.UILink()}"));
             }
@@ -398,6 +507,20 @@ namespace Eco.Mods.Companies
                 OnNoLongerOwnerOfProperty(deed);
             }
             MarkTooltipDirty();
+        }
+
+        private void SetCitizenOf(Settlement settlement)
+        {
+            if (DirectCitizenship == settlement) { return; }
+            if (DirectCitizenship != null)
+            {
+                DirectCitizenship.Citizenship.DirectCitizenRoster.Leave(LegalPerson);
+            }
+            if (settlement != null)
+            {
+                settlement.Citizenship.DirectCitizenRoster.AddToRoster(null, LegalPerson, true);
+            }
+            LegalPerson.DirectCitizenship = settlement;
         }
 
         private void UpdateHQSize()
@@ -497,6 +620,8 @@ namespace Eco.Mods.Companies
             sb.AppendLine(this.OwnedDeeds.Any() ? this.OwnedDeeds.Where(x => x != HQDeed).Select(x => x.UILinkNullSafe()).InlineFoldoutListLoc("deed", TooltipOrigin.None, 5) : Localizer.DoStr("None."));
             sb.AppendLine(TextLoc.HeaderLoc($"Shareholders:"));
             sb.AppendLine(this.Shareholders.Any() ? this.Shareholders.Select(x => x.Description).InlineFoldoutListLoc("holding", TooltipOrigin.None, 5) : Localizer.DoStr("None."));
+            sb.Append(TextLoc.HeaderLoc($"Citizenship: "));
+            sb.AppendLine(DirectCitizenship.UILinkNullSafe());
             return sb.ToLocString();
         }
 

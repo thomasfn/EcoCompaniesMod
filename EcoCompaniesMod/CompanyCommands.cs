@@ -138,6 +138,63 @@ namespace Eco.Mods.Companies
             user.MsgLoc($"Your claim tool has been set to {currentEmployer.HQDeed.UILink()}.");
         }
 
+        [ChatSubCommand("Company", "Provides options for company citizenship.", ChatAuthorizationLevel.User)]
+        public static void Citizenship(User user, string verb = "", Settlement targetSettlement = null)
+        {
+            var currentEmployer = Companies.Company.GetEmployer(user);
+            if (currentEmployer == null) { return; }
+
+            LocString errorMessage;
+            switch (verb)
+            {
+                case "":
+                    if (currentEmployer.DirectCitizenship != null)
+                    {
+                        user.MsgLoc($"{currentEmployer.UILink()} is currently a direct citizen of {currentEmployer.DirectCitizenship.UILink()}.");
+                    }
+                    else
+                    {
+                        user.MsgLoc($"{currentEmployer.UILink()} is currently not a citizen of any settlement.");
+                    }
+                    break;
+                case "apply":
+                    if (targetSettlement == null)
+                    {
+                        user.MsgLoc($"You must specify a valid settlement to apply to.");
+                        return;
+                    }
+                    if (!currentEmployer.TryApplyToSettlement(user, targetSettlement, out errorMessage))
+                    {
+                        user.OkBox(errorMessage);
+                    }
+                    break;
+                case "join":
+                    if (targetSettlement == null)
+                    {
+                        user.MsgLoc($"You must specify a valid settlement to join.");
+                        return;
+                    }
+                    if (!currentEmployer.TryJoinSettlement(user, targetSettlement, out errorMessage))
+                    {
+                        user.OkBox(errorMessage);
+                    }
+                    break;
+                case "leave":
+                    if (!currentEmployer.TryLeaveSettlement(user, out errorMessage))
+                    {
+                        user.OkBox(errorMessage);
+                    }
+                    break;
+                case "refresh":
+                    currentEmployer.UpdateCitizenships();
+                    user.MsgLoc($"Citizenships refreshed.");
+                    break;
+                default:
+                    user.MsgLoc($"Valid verbs are 'apply', 'join', 'leave', or blank to view citizenship status.");
+                    break;
+            }
+        }
+
         /*[ChatSubCommand("Company", "Edits the company owned deed that you're currently standing in.", ChatAuthorizationLevel.User)]
         public static void EditDeed(User user)
         {
