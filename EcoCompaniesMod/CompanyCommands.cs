@@ -132,7 +132,9 @@ namespace Eco.Mods.Companies
                 return;
             }
             claimTool.Deed = currentEmployer.HQDeed;
-            claimTool.Changed(nameof(claimTool.Deed));
+            typeof(ClaimToolBaseItem)
+                .GetMethod("SetClaimMode", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .Invoke(claimTool, new object[] { user.Player });
             user.MsgLoc($"Your claim tool has been set to {currentEmployer.HQDeed.UILink()}.");
         }
 

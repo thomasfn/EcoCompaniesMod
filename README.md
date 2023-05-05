@@ -27,7 +27,16 @@ A company has one CEO and zero to many employees. The CEO is implicitly consider
 Every company has a legal person and a bank account created for it. The name of the legal person will be `XXX Legal Person` and the name of the bank account will be `XXX Company Account`, where `XXX` is the name of the company. The legal person is a fake user of sorts and is seen by the citizen timer law trigger. All employees are given user rights to the company bank account but not manager rights, meaning that company wealth is not included as part of their wealth. The legal person is the sole manager of the account and considered to have 100% of the wealth of the company. The user list of the bank account is automatically updated whenever someone joins or leaves the company.
 
 ### Company Property
-Every company can own property. This is achieved by a player passed ownership of a deed to the company's legal person. Like bank accounts, all employees will be automatically authed, but also invited as residents. Due to technical limitations of game, employees will not be able to directly edit the deed after doing this (e.g. claim more plots, unclaim existing plots or remove the whole deed). Instead they must stand on the plot and use `/company editplot`, or change ownership of the deed back to themself, make the edit and then pass it back to the legal person.
+Every company can own property. This is achieved by a player passed ownership of a deed to the company's legal person. Like bank accounts, all employees will be automatically authed, but also invited as residents. Due to technical limitations of game, employees will not be able to directly edit the deed after doing this (e.g. claim more plots, unclaim existing plots or remove the whole deed). Instead they must change ownership of the deed back to themself, make the edit and then pass it back to the legal person.
+
+### Property Limits Mode
+As of 10.0 the mod includes a property limits mode, enabled by default, that prevents employees of a company from having homestead claims. Instead, the company itself gets a HQ homestead claim.
+- When founding a company, if the founder already has a homestead claim, it will automatically be transferred and become the company HQ
+- If the company does not have a HQ and an employee tries to place a homestead claim, it will automatically be transferred and become the company HQ
+- If the company has a HQ, employees will be prevented from placing homestead claims
+- Players can't join a company if they have a homestead claim, even if the company does not yet have a HQ - they must remove their homestead claim first
+- The HQ maximum plot limit will be multiplied for every employee. For example, if the default max plots for a homestead claim is 12, a 3-person company's HQ will have a max plot count of 36
+- Any employee can claim or unclaim plots for the company HQ by selecting their claim tool and running `/company claim`, which will set the claim tool to the HQ deed
 
 ### Legislation
 The following game values are added to assist with writing company-aware laws.
