@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace Eco.Mods.Companies
 {
@@ -14,6 +15,7 @@ namespace Eco.Mods.Companies
     using Gameplay.Systems.Tooltip;
     using Gameplay.Systems.Messaging.Notifications;
     using Gameplay.Systems.TextLinks;
+    using Gameplay.Settlements.ClaimStakes;
     using Gameplay.Civics.GameValues;
     using Gameplay.Auth;
     using Gameplay.Aliases;
@@ -22,10 +24,6 @@ namespace Eco.Mods.Companies
     using Shared.Localization;
     using Shared.Items;
     using Shared.Services;
-    using Eco.Gameplay.Settlements.Civics;
-    using Eco.Gameplay.Settlements.ClaimStakes;
-    using System.Threading.Tasks;
-    using Eco.Gameplay.Civics.LegalActions;
 
     public partial class CompanyManager : Singleton<CompanyManager>, IGameActionAware
     {
