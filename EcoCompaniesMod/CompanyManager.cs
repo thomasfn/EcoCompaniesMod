@@ -24,6 +24,8 @@ namespace Eco.Mods.Companies
     using Shared.Localization;
     using Shared.Items;
     using Shared.Services;
+    using Eco.Gameplay.Settlements.Components;
+    using Eco.Gameplay.Items;
 
     public partial class CompanyManager : Singleton<CompanyManager>, IGameActionAware
     {
@@ -230,6 +232,41 @@ namespace Eco.Mods.Companies
                 {
                     ClaimHomesteadAsHQ(placeOrPickUpObject.Citizen, employer);
                 });
+            }
+
+            // Look for attempt to pickup HQ homestead
+            if (placeOrPickUpObject.PlacedOrPickedUp == PlacedOrPickedUp.PickingUpObject && placeOrPickUpObject.WorldObject.TryGetComponent<HomesteadFoundationComponent>(out var component))
+            {
+                var company = Company.GetFromLegalPerson(component.Creator);
+                if (company != null && company.IsEmployee(placeOrPickUpObject.Citizen))
+                {
+                    lawPostResult.AddPostEffect(() =>
+                    {
+                        FixupHomesteadClaimItems(placeOrPickUpObject.Citizen);
+                    });
+                }
+            }
+        }
+
+        private void FixupHomesteadClaimItems(User employee)
+        {
+            var userField = typeof(HomesteadClaimStakeItem).GetField("user", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (userField == null)
+            {
+                Logger.Error($"Failed to retrieve 'user' field via reflection on HomesteadClaimStakeItem");
+                return;
+            }
+            var company = Company.GetEmployer(employee);
+            if (company == null) { return; }
+            // Sweep their inv looking for HomesteadClaimStakeItem items with the "user" field set to the legal person and change it to point at them instead
+            foreach (var stack in employee.Inventory.AllInventories.AllStacks())
+            {
+                if (stack.Item is not HomesteadClaimStakeItem homesteadClaimStakeItem) { continue; }
+                if (!homesteadClaimStakeItem.IsUnique) { continue; }
+                var currentUser = userField.GetValue(homesteadClaimStakeItem) as User;
+                if (currentUser != company.LegalPerson) { continue; }
+                userField.SetValue(homesteadClaimStakeItem, employee);
+                Logger.Debug($"Fixed up '{stack}' (homestead claim stake) to be keyed to '{employee.Name}' instead of {company.LegalPerson.Name}' after HQ deed was lifted");
             }
         }
 

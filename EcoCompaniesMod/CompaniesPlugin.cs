@@ -104,7 +104,7 @@ namespace Eco.Mods.Companies
             CosturaUtility.Initialize();
             Harmony.DEBUG = true;
             var harmony = new Harmony("Eco.Mods.Companies");
-            harmony.PatchAll();
+            harmony.PatchAll(Assembly.GetExecutingAssembly());
         }
 
         public CompaniesPlugin()
