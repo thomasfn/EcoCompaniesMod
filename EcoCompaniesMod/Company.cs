@@ -502,6 +502,19 @@ namespace Eco.Mods.Companies
             {
                 UpdateCitizenship(user);
             }
+            if (LegalPerson.HomesteadDeed != null)
+            {
+                if (LegalPerson.HomesteadDeed.HostObject.TryGetObject(out var hostObject))
+                {
+                    if (hostObject.TryGetComponent<HomesteadFoundationComponent>(out var foundationComponent))
+                    {
+                        // foundationComponent.CitizenshipUpdated();
+                        typeof(HomesteadFoundationComponent)
+                            .GetMethod("CitizenshipUpdated", BindingFlags.NonPublic | BindingFlags.Instance)
+                            .Invoke(foundationComponent, new object[] { false });
+                    }
+                }
+            }
         }
 
         private void UpdateCitizenship(User user)
@@ -543,18 +556,28 @@ namespace Eco.Mods.Companies
             {
                 LegalPerson.HomesteadDeed = deed;
                 Registrars.Get<Deed>().Rename(deed, $"{Name} HQ", true);
+                
                 if (deed.HostObject.TryGetObject(out var hostObject))
                 {
                     //hostObject.Creator = LegalPerson;
-                    typeof(WorldObject).GetProperty("Creator", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).SetValue(hostObject, LegalPerson, null);
+                    typeof(WorldObject)
+                        .GetProperty("Creator", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                        .SetValue(hostObject, LegalPerson, null);
                     //hostObject.UpdateOwnerName();
-                    typeof(WorldObject).GetMethod("UpdateOwnerName", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(hostObject, null);
+                    typeof(WorldObject)
+                        .GetMethod("UpdateOwnerName", BindingFlags.NonPublic | BindingFlags.Instance)
+                        .Invoke(hostObject, null);
+                    deed.UpdateInfluencingSettlement();
+                    
                     if (hostObject.TryGetComponent<HomesteadFoundationComponent>(out var foundationComponent))
                     {
-                        typeof(HomesteadFoundationComponent).GetMethod("UpdateTitleAndDesc", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(foundationComponent, null);
+                        // foundationComponent.CitizenshipUpdated(true);
+                        typeof(HomesteadFoundationComponent)
+                            .GetMethod("CitizenshipUpdated", BindingFlags.NonPublic | BindingFlags.Instance)
+                            .Invoke(foundationComponent, new object[] { true });
                     }
                 }
-                SetCitizenOf(deed.InfluencingSettlement);
+                SetCitizenOf(deed.CachedAssignedSettlementOfStake);
                 UpdateHQSize();
                 SendCompanyMessage(Localizer.Do($"{this.UILink()} is now the owner of {deed.UILink()}"));
             }

@@ -303,9 +303,10 @@ namespace Eco.Mods.Companies
 
         private void ClaimHomesteadAsHQ(User employee, Deed deed, Company employer)
         {
+            if (deed.Owner == employer.LegalPerson) { return; }
             deed.ForceChangeOwners(employer.LegalPerson);
-            employer.OnNowOwnerOfProperty(deed);
             employee.HomesteadDeed = null;
+            employer.OnNowOwnerOfProperty(deed);
         }
     }
 }
