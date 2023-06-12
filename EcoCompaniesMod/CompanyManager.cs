@@ -26,6 +26,7 @@ namespace Eco.Mods.Companies
     using Shared.Services;
     using Eco.Gameplay.Settlements.Components;
     using Eco.Gameplay.Items;
+    using Eco.Gameplay.Settlements;
 
     public partial class CompanyManager : Singleton<CompanyManager>, IGameActionAware
     {
@@ -65,14 +66,16 @@ namespace Eco.Mods.Companies
             public readonly User CEO;
             public readonly string CompanyName;
             public readonly IEnumerable<Deed> TransferDeeds;
+            public readonly Settlement JoinSettlement;
 
             public bool IsValid => CEO != null && !string.IsNullOrEmpty(CompanyName);
 
-            public CreateAttempt(User ceo, string companyName, IEnumerable<Deed> transferDeeds)
+            public CreateAttempt(User ceo, string companyName, IEnumerable<Deed> transferDeeds, Settlement joinSettlement)
             {
                 CEO = ceo;
                 CompanyName = companyName;
                 TransferDeeds = transferDeeds;
+                JoinSettlement = joinSettlement;
             }
 
             public override bool Equals(object obj) => obj is CreateAttempt attempt && Equals(attempt);
@@ -80,7 +83,8 @@ namespace Eco.Mods.Companies
             public bool Equals(CreateAttempt other)
                 => CEO == other.CEO
                 && CompanyName == other.CompanyName
-                && TransferDeeds.SetEquals(other.TransferDeeds);
+                && TransferDeeds.SetEquals(other.TransferDeeds)
+                && JoinSettlement == other.JoinSettlement;
 
             public override int GetHashCode() => HashCode.Combine(CEO, CompanyName, TransferDeeds);
 
@@ -89,7 +93,7 @@ namespace Eco.Mods.Companies
             public static bool operator !=(CreateAttempt left, CreateAttempt right) => !(left == right);
 
             public LocString ToLocString()
-                => Localizer.Do($"This will found a company named '{CompanyName}' with {CEO.UILinkNullSafe()} as the CEO.\n{DescribeTransfers()}");
+                => Localizer.Do($"This will found a company named '{CompanyName}' with {CEO.UILinkNullSafe()} as the CEO.\n{DescribeTransfers()}\n{DescribeJoinSettlement()}");
 
             private LocString DescribeTransfers()
             {
@@ -98,6 +102,22 @@ namespace Eco.Mods.Companies
                     return Localizer.Do($"The following deeds will be transferred to the company upon founding: {TransferDeeds.Select(x => x.UILinkNullSafe()).InlineFoldoutListLoc("deed", TooltipOrigin.None, 5)}");
                 }
                 return Localizer.DoStr("No deeds will be transferred to the company upon founding.");
+            }
+
+            private LocString DescribeJoinSettlement()
+            {
+                if (JoinSettlement != null)
+                {
+                    if (JoinSettlement.ImmigrationPolicy?.Approver == null)
+                    {
+                        return Localizer.Do($"The company will join {JoinSettlement.UILink()} upon founding.");
+                    }
+                    else
+                    {
+                        return Localizer.Do($"The company will apply to join {JoinSettlement.UILink()} upon founding.");
+                    }
+                }
+                return Localizer.Do($"The company will not be considered a citizen of any settlement upon founding.");
             }
         }
 
@@ -114,8 +134,24 @@ namespace Eco.Mods.Companies
             if (!ValidateName(name, out errorMessage)) { return CreateAttempt.Invalid; }
             name = Registrars.Get<Company>().GetUniqueName(name);
 
+            if (Registrars.Get<Company>().GetByName(name) != null)
+            {
+                errorMessage = $"A company with the name '{name}' already exists";
+                return CreateAttempt.Invalid;
+            }
+
+            if (Registrars.Get<User>().GetByName(GetLegalPersonName(name)) != null)
+            {
+                errorMessage = $"A company with the name '{name}' already exists";
+                return CreateAttempt.Invalid;
+            }
+
             errorMessage = string.Empty;
-            return new CreateAttempt(ceo, name, CompaniesPlugin.Obj.Config.PropertyLimitsEnabled && ceo.HomesteadDeed != null ? Enumerable.Repeat(ceo.HomesteadDeed, 1) : Enumerable.Empty<Deed>());
+            return new CreateAttempt(
+                ceo, name,
+                CompaniesPlugin.Obj.Config.PropertyLimitsEnabled && ceo.HomesteadDeed != null ? Enumerable.Repeat(ceo.HomesteadDeed, 1) : Enumerable.Empty<Deed>(),
+                CompaniesPlugin.Obj.Config.PropertyLimitsEnabled ? ceo.DirectCitizenship : null
+            );
         }
 
         public Company CreateNew(User ceo, string name, CreateAttempt createAttempt, out string errorMessage)
@@ -130,6 +166,7 @@ namespace Eco.Mods.Companies
             var company = Registrars.Add<Company>(null, latestCreateAttempt.CompanyName);
             company.Creator = latestCreateAttempt.CEO;
             company.ChangeCeo(latestCreateAttempt.CEO);
+            // TODO: Assign company citienzehip to CEO's federation
             company.SaveInRegistrar();
             if (latestCreateAttempt.TransferDeeds != null)
             {
@@ -144,6 +181,13 @@ namespace Eco.Mods.Companies
                 NotificationCategory.Government,
                 NotificationStyle.Chat
             );
+            if (company.DirectCitizenship == null && createAttempt.JoinSettlement != null)
+            {
+                if (!company.TryApplyToSettlement(ceo, createAttempt.JoinSettlement, out var joinErr))
+                {
+                    Logger.Debug($"Company {company.Name} tried to apply to {createAttempt.JoinSettlement.Name} during founding process but failed: '{joinErr}'");
+                }
+            }
             return company;
         }
 
@@ -308,5 +352,14 @@ namespace Eco.Mods.Companies
             employee.HomesteadDeed = null;
             employer.OnNowOwnerOfProperty(deed);
         }
+
+        internal static string GetLegalPersonName(string companyName)
+            => $"{companyName} Legal Person";
+
+        internal static string GetCompanyAccountName(string companyName)
+            => $"{companyName} Company Account";
+
+        internal static string GetCompanyCurrencyName(string companyName)
+            => $"{companyName} Shares";
     }
 }

@@ -29,6 +29,14 @@ Every company has a legal person and a bank account created for it. The name of 
 ### Company Property
 Every company can own property. This is achieved by a player passed ownership of a deed to the company's legal person. Like bank accounts, all employees will be automatically authed, but also invited as residents. Due to technical limitations of game, employees will not be able to directly edit the deed after doing this (e.g. claim more plots, unclaim existing plots or remove the whole deed). Instead they must change ownership of the deed back to themself, make the edit and then pass it back to the legal person.
 
+### Company Citizenship
+The company has a settlement citizenship, which is tied to that of the legal person. this can be managed using the `/company citizenship` command. Any citizenship changes affecting the legal person will be propagated to the company.
+- Use `/company citizenship apply,<settlementname>` to apply for the company to join a settlement
+- Use `/company citizenship join,<settlementname>` to accept an invitation for the company to join a settlement
+- Use `/company citizenship leave` to have the company leave the current settlement
+
+The company's ability to apply, join and leave the settlement may be subject to restrictions depending on how the server and the settlements in question are configured. Generally you will need to remove the HQ deed when trying to change company citizenship. The company's citizenship may also change if the HQ deed is annexed by a different settlement.
+
 ### Property Limits Mode
 As of 10.0 the mod includes a property limits mode, enabled by default, that prevents employees of a company from having homestead claims. Instead, the company itself gets a HQ homestead claim.
 - When founding a company, if the founder already has a homestead claim, it will automatically be transferred and become the company HQ
@@ -37,6 +45,7 @@ As of 10.0 the mod includes a property limits mode, enabled by default, that pre
 - Players can't join a company if they have a homestead claim, even if the company does not yet have a HQ - they must remove their homestead claim first
 - The HQ maximum plot limit will be multiplied for every employee. For example, if the default max plots for a homestead claim is 12, a 3-person company's HQ will have a max plot count of 36
 - Any employee can claim or unclaim plots for the company HQ by selecting their claim tool and running `/company claim`, which will set the claim tool to the HQ deed
+- The citizenship of all employees is bound to that of the company and is updated automatically whenever the company legal person citizenship has changed
 
 ### Legislation
 The following game values are added to assist with writing company-aware laws.

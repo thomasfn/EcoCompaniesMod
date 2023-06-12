@@ -116,7 +116,7 @@ namespace Eco.Mods.Companies
             if (LegalPerson == null)
             {
                 string fakeId = Guid.NewGuid().ToString();
-                LegalPerson = UserManager.Obj.PrepareNewUser(fakeId, fakeId, $"{Name} Legal Person");
+                LegalPerson = UserManager.Obj.PrepareNewUser(fakeId, fakeId, Registrars.Get<User>().GetUniqueName(CompanyManager.GetLegalPersonName(Name)));
                 LegalPerson.Initialize();
             }
             this.WatchProp(LegalPerson, nameof(User.DirectCitizenship), (_, ev) =>
@@ -143,7 +143,7 @@ namespace Eco.Mods.Companies
             if (BankAccount == null)
             {
                 BankAccount = BankAccountManager.Obj.GetPersonalBankAccount(LegalPerson.Name);
-                BankAccount.SetName(null, $"{Name} Company Account");
+                BankAccount.SetName(null, Registrars.Get<BankAccount>().GetUniqueName(CompanyManager.GetCompanyAccountName(Name)));
                 UpdateBankAccountAuthList(BankAccount);
             }
 
@@ -151,7 +151,7 @@ namespace Eco.Mods.Companies
             if (SharesCurrency == null)
             {
                 SharesCurrency = CurrencyManager.GetPlayerCurrency(LegalPerson);
-                SharesCurrency.SetName(null, $"{Name} Shares");
+                SharesCurrency.SetName(null, Registrars.Get<Currency>().GetUniqueName(CompanyManager.GetCompanyCurrencyName(Name)));
             }
         }
 
@@ -376,7 +376,7 @@ namespace Eco.Mods.Companies
                 return false;
             }
             if (!CheckLegalPersonCanJoinSettlement(target, out errorMessage)) { return false; }
-            var approver = target.ImmigrationPolicy?.Approver ?? target.Leader;
+            var approver = target.ImmigrationPolicy?.Approver;
             if (approver == null)
             {
                 target.Citizenship.DirectCitizenRoster.AddToRoster(null, LegalPerson, true);
@@ -398,12 +398,19 @@ namespace Eco.Mods.Companies
                 errorMessage = Localizer.DoStr($"Couldn't try to join {target.MarkedUpName} as you are not the CEO of {MarkedUpName}");
                 return false;
             }
+            if (!CheckLegalPersonCanJoinSettlement(target, out errorMessage)) { return false; }
+            if (target.ImmigrationPolicy?.Approver == null)
+            {
+                target.Citizenship.DirectCitizenRoster.AddToRoster(null, LegalPerson, true);
+                errorMessage = LocString.Empty;
+                return true;
+            }
             if (!target.Citizenship.DirectCitizenRoster.CanAcceptInvitation(LegalPerson))
             {
                 errorMessage = Localizer.DoStr($"Couldn't try to join {target.MarkedUpName} as {MarkedUpName} has not been invited.");
                 return false;
             }
-            if (!CheckLegalPersonCanJoinSettlement(target, out errorMessage)) { return false; }
+            
             target.Citizenship.DirectCitizenRoster.AddToRoster(null, LegalPerson, false);
             errorMessage = LocString.Empty;
             return true;
@@ -498,6 +505,7 @@ namespace Eco.Mods.Companies
 
         public void UpdateCitizenships()
         {
+            if (!CompaniesPlugin.Obj.Config.PropertyLimitsEnabled) { return; }
             foreach (var user in AllEmployees)
             {
                 UpdateCitizenship(user);
@@ -648,7 +656,8 @@ namespace Eco.Mods.Companies
                 Logger.Debug($"Company '{Name}' had a HQ deed but failed to resolve plots component for it when updating HQ size");
                 return;
             }
-            var claimsUpdatedMethod = plotsComponent.GetType().GetMethod("ClaimsUpdated", BindingFlags.NonPublic | BindingFlags.Instance);
+            var claimsUpdatedMethod = typeof(PlotsComponent)
+                .GetMethod("ClaimsUpdated", BindingFlags.NonPublic | BindingFlags.Instance);
             if (claimsUpdatedMethod == null)
             {
                 Logger.Error($"Failed to find method PlotsComponent.ClaimsUpdated via reflection");
