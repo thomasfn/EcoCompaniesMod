@@ -193,24 +193,32 @@ namespace Eco.Mods.Companies
 
         public void ActionPerformed(GameAction action)
         {
-            switch (action)
+            try
             {
-                case GameActions.CompanyExpense:
-                case GameActions.CompanyIncome:
-                    // Catch these specifically and noop, to avoid them going into the MoneyGameAction case
-                    break;
-                case MoneyGameAction moneyGameAction:
-                    var sourceCompany = Company.GetFromBankAccount(moneyGameAction.SourceBankAccount);
-                    sourceCompany?.OnGiveMoney(moneyGameAction);
-                    var destCompany = Company.GetFromBankAccount(moneyGameAction.TargetBankAccount);
-                    destCompany?.OnReceiveMoney(moneyGameAction);
-                    break;
-                case PropertyTransfer propertyTransferAction:
-                    var oldOwnerCompany = Company.GetFromLegalPerson(propertyTransferAction.CurrentOwner);
-                    oldOwnerCompany?.OnNoLongerOwnerOfProperty(propertyTransferAction.RelatedDeeds);
-                    var newOwnerCompany = Company.GetFromLegalPerson(propertyTransferAction.NewOwner);
-                    newOwnerCompany?.OnNowOwnerOfProperty(propertyTransferAction.RelatedDeeds);
-                    break;
+                switch (action)
+                {
+                    case GameActions.CompanyExpense:
+                    case GameActions.CompanyIncome:
+                        // Catch these specifically and noop, to avoid them going into the MoneyGameAction case
+                        break;
+                    case MoneyGameAction moneyGameAction:
+                        var sourceCompany = Company.GetFromBankAccount(moneyGameAction.SourceBankAccount);
+                        sourceCompany?.OnGiveMoney(moneyGameAction);
+                        var destCompany = Company.GetFromBankAccount(moneyGameAction.TargetBankAccount);
+                        destCompany?.OnReceiveMoney(moneyGameAction);
+                        break;
+                    case PropertyTransfer propertyTransferAction:
+                        var oldOwnerCompany = Company.GetFromLegalPerson(propertyTransferAction.CurrentOwner);
+                        oldOwnerCompany?.OnNoLongerOwnerOfProperty(propertyTransferAction.RelatedDeeds);
+                        var newOwnerCompany = Company.GetFromLegalPerson(propertyTransferAction.NewOwner);
+                        newOwnerCompany?.OnNowOwnerOfProperty(propertyTransferAction.RelatedDeeds);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"CompanyManager.ActionPerformed had an exception while handling a {action?.GetType()}: {ex}");
+                Logger.Error(ex.StackTrace);
             }
         }
 
@@ -286,7 +294,7 @@ namespace Eco.Mods.Companies
                 {
                     lawPostResult.AddPostEffect(() =>
                     {
-                        FixupHomesteadClaimItems(placeOrPickUpObject.Citizen);
+                        Task.Delay(250).ContinueWith(t => FixupHomesteadClaimItems(placeOrPickUpObject.Citizen));
                     });
                 }
             }

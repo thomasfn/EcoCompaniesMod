@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using Eco.Gameplay.Civics.GameValues;
+using System.Threading.Tasks;
 
 namespace Eco.Mods.Companies
 {
@@ -16,6 +17,19 @@ namespace Eco.Mods.Companies
         [ChatCommand("Company", ChatAuthorizationLevel.User)]
         public static void Company() { }
 
+        [ChatSubCommand("Company", "Check company mod configuration.", ChatAuthorizationLevel.User)]
+        public static void Config(User user)
+        {
+            if (CompaniesPlugin.Obj.Config.PropertyLimitsEnabled)
+            {
+                user.MsgLoc($"Company property limits mode is ENABLED.");
+            }
+            else
+            {
+                user.MsgLoc($"Company property limits mode is DISABLED.");
+            }
+        }
+
         [ChatSubCommand("Company", "Found a new company.", ChatAuthorizationLevel.User)]
         public static async Task Create(User user, string name)
         {
@@ -30,7 +44,7 @@ namespace Eco.Mods.Companies
                 CompanyManager.Obj.CreateNew(user, name, createAttempt, out errorMessage);
                 return;
             }
-            var confirmed = await user.Player.ConfirmBoxLoc($"{createAttempt.ToLocString()}\nThis action is irreversible.\nDo you wish to proceed?");
+            var confirmed = await user.Player.ConfirmBoxLoc($"{createAttempt.ToLocString()}\nOnce founded, a company cannot be dissolved and exists permanently.\nDo you wish to proceed?");
             if (!confirmed) { return; }
             var company = CompanyManager.Obj.CreateNew(user, name, createAttempt, out errorMessage);
             if (company == null)
@@ -191,6 +205,51 @@ namespace Eco.Mods.Companies
                     break;
                 default:
                     user.MsgLoc($"Valid verbs are 'apply', 'join', 'leave', or blank to view citizenship status.");
+                    break;
+            }
+        }
+
+        [ChatSubCommand("Company", "Provides options for company HQ management.", ChatAuthorizationLevel.User)]
+        public static void HQ(User user, string verb = "")
+        {
+            var currentEmployer = Companies.Company.GetEmployer(user);
+            if (currentEmployer == null) { return; }
+
+            switch (verb)
+            {
+                case "":
+                    if (currentEmployer.HQDeed != null)
+                    {
+                        user.MsgLoc($"{currentEmployer.UILink()} currently has {currentEmployer.HQDeed.UILink()} as it's HQ.");
+                    }
+                    else
+                    {
+                        user.MsgLoc($"{currentEmployer.UILink()} currently has no HQ.");
+                    }
+                    break;
+                case "checkhqdesync":
+                    if (currentEmployer.CheckHQDesync(out var errorMessage))
+                    {
+                        user.Msg(errorMessage);
+                    }
+                    else
+                    {
+                        user.MsgLoc($"No HQ desync detected.");
+                    }
+                    break;
+                case "refreshsize":
+                    if (currentEmployer.HQDeed != null)
+                    {
+                        currentEmployer.ForceUpdateHQSize();
+                        user.MsgLoc($"HQ size refreshed ({currentEmployer.HQDeed.UILinkNullSafe()} should have {currentEmployer.HQSize} base max plots)");
+                    }
+                    else
+                    {
+                        user.MsgLoc($"{currentEmployer.UILink()} currently has no HQ.");
+                    }
+                    break;
+                default:
+                    user.MsgLoc($"Valid verbs are 'checkhqdesync', 'refreshsize', or blank to view HQ status.");
                     break;
             }
         }

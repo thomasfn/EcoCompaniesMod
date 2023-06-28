@@ -59,6 +59,7 @@ namespace Eco.Mods.Companies.HarmonyPatches
                 var owningCompany = Company.GetFromHQ(deed);
                 if (owningCompany != null)
                 {
+                    Logger.Debug($"PlotsComponentBaseClaimsPatch: Overriding HQ size of '{deed.Name}' from {originalValue} to {owningCompany.HQSize}");
                     return owningCompany.HQSize;
                 }
             }

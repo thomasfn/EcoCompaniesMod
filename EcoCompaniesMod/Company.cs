@@ -79,6 +79,18 @@ namespace Eco.Mods.Companies
 
         public Deed HQDeed => LegalPerson?.HomesteadDeed;
 
+        public PlotsComponent HQPlots
+        {
+            get
+            {
+                var deed = HQDeed;
+                if (deed == null) { return null; }
+                if (!deed.HostObject.TryGetObject(out var worldObj)) { return null; }
+                if (!worldObj.TryGetComponent<PlotsComponent>(out var plotsComponent)) { return null; }
+                return plotsComponent;
+            }
+        }
+
         public int HQSize => ServiceHolder<SettlementConfig>.Obj.BasePlotsOnHomesteadClaimStake * (CompaniesPlugin.Obj.Config.PropertyLimitsEnabled ? AllEmployees.Count() : 1);
 
         public Settlement DirectCitizenship => LegalPerson.DirectCitizenship;
@@ -153,6 +165,10 @@ namespace Eco.Mods.Companies
                 SharesCurrency = CurrencyManager.GetPlayerCurrency(LegalPerson);
                 SharesCurrency.SetName(null, Registrars.Get<Currency>().GetUniqueName(CompanyManager.GetCompanyCurrencyName(Name)));
             }
+
+            // Setup HQ deed
+            HQPlots?.OnChanged.AddUnique(FixupHQSize);
+            ForceUpdateHQSize();
         }
 
         #region Employee Management
@@ -553,7 +569,7 @@ namespace Eco.Mods.Companies
         private void OnEmployeesChanged()
         {
             UpdateAllAuthLists();
-            UpdateHQSize();
+            ForceUpdateHQSize();
             MarkDirty();
             MarkTooltipDirty();
         }
@@ -584,9 +600,13 @@ namespace Eco.Mods.Companies
                             .GetMethod("CitizenshipUpdated", BindingFlags.NonPublic | BindingFlags.Instance)
                             .Invoke(foundationComponent, new object[] { true });
                     }
+                    if (hostObject.TryGetComponent<PlotsComponent>(out var plotsComponent))
+                    {
+                        plotsComponent.OnChanged.AddUnique(FixupHQSize);
+                    }
                 }
                 SetCitizenOf(deed.CachedAssignedSettlementOfStake);
-                UpdateHQSize();
+                ForceUpdateHQSize();
                 SendCompanyMessage(Localizer.Do($"{this.UILink()} is now the owner of {deed.UILink()}"));
             }
             else
@@ -609,6 +629,7 @@ namespace Eco.Mods.Companies
         {
             if (deed == HQDeed)
             {
+                HQPlots?.OnChanged.Remove(FixupHQSize);
                 LegalPerson.HomesteadDeed = null;
                 SendCompanyMessage(Localizer.Do($"{deed.UILink()} is no longer the HQ of {this.UILink()}"));
                 deed.Residency.Invitations.InvitationList.Clear();
@@ -643,19 +664,33 @@ namespace Eco.Mods.Companies
             LegalPerson.DirectCitizenship = settlement;
         }
 
-        private void UpdateHQSize()
+        public bool CheckHQDesync(out LocString errorMessage)
         {
-            if (HQDeed == null) { return; }
-            if (!HQDeed.HostObject.TryGetObject(out var worldObj))
+            var ownedHomesteadDeeds = OwnedDeeds.Where(d => d.IsHomesteadDeed).ToArray();
+            if (ownedHomesteadDeeds.Length == 0 && HQDeed != null)
             {
-                Logger.Debug($"Company '{Name}' had a HQ deed but failed to resolve world object for it when updating HQ size");
-                return;
+                errorMessage = Localizer.Do($"Detected incorrectly assigned HQ deed '{HQDeed.UILink()}' (deed was not owned by legal person), clearing...");
+                OnNoLongerOwnerOfProperty(HQDeed);
+                return true;
             }
-            if (!worldObj.TryGetComponent<PlotsComponent>(out var plotsComponent))
+            if (ownedHomesteadDeeds.Length > 0)
             {
-                Logger.Debug($"Company '{Name}' had a HQ deed but failed to resolve plots component for it when updating HQ size");
-                return;
+                if (ownedHomesteadDeeds[0] != HQDeed)
+                {
+                    errorMessage = Localizer.Do($"Detected unassigned HQ deed '{ownedHomesteadDeeds[0].UILink()}' (deed was owned by legal person but not set as homestead), updating...");
+                    OnNowOwnerOfProperty(ownedHomesteadDeeds[0]);
+                    return true;
+                }
             }
+            errorMessage = LocString.Empty;
+            return false;
+        }
+
+        public void ForceUpdateHQSize()
+        {
+            var plotsComponent = HQPlots;
+            if (plotsComponent == null) { return; }
+            plotsComponent.OnChanged.AddUnique(FixupHQSize);
             var claimsUpdatedMethod = typeof(PlotsComponent)
                 .GetMethod("ClaimsUpdated", BindingFlags.NonPublic | BindingFlags.Instance);
             if (claimsUpdatedMethod == null)
@@ -664,6 +699,19 @@ namespace Eco.Mods.Companies
                 return;
             }
             claimsUpdatedMethod.Invoke(plotsComponent, new object[] { null });
+        }
+
+        private void FixupHQSize()
+        {
+            var deed = HQDeed;
+            var plotsComponent = HQPlots;
+            if (deed == null || plotsComponent == null) { return; }
+            var originalValue = deed.AllowedPlots;
+            var newAllowedPlots = (originalValue - ServiceHolder<SettlementConfig>.Obj.BasePlotsOnHomesteadClaimStake) + HQSize;
+            if (deed.AllowedPlots == newAllowedPlots) { return; }
+            deed.AllowedPlots = newAllowedPlots;
+            plotsComponent.UpdateDescription();
+            Logger.Debug($"Company.FixupHQSize: Overriding HQ size of '{deed.Name}' from {originalValue} to {HQSize}");
         }
 
         private void UpdateDeedAuthList(Deed deed)
