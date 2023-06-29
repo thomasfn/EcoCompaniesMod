@@ -203,6 +203,16 @@ namespace Eco.Mods.Companies
                     currentEmployer.UpdateCitizenships();
                     user.MsgLoc($"Citizenships refreshed.");
                     break;
+                case "checkdesync":
+                    if (currentEmployer.CheckCitizenshipDesync(out errorMessage))
+                    {
+                        user.Msg(errorMessage);
+                    }
+                    else
+                    {
+                        user.MsgLoc($"No citizenship desync detected.");
+                    }
+                    break;
                 default:
                     user.MsgLoc($"Valid verbs are 'apply', 'join', 'leave', or blank to view citizenship status.");
                     break;

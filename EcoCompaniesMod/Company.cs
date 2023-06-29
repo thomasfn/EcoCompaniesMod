@@ -34,6 +34,7 @@ namespace Eco.Mods.Companies
     using Shared.Services;
     using Shared.Items;
     using Shared.IoC;
+    using Shared.Utils;
 
     public readonly struct ShareholderHolding
     {
@@ -149,6 +150,7 @@ namespace Eco.Mods.Companies
                     SendCompanyMessage(Localizer.Do($"{MarkedUpName} has joined {DirectCitizenship.UILink()}."));
                 }
                 this.UpdateCitizenships();
+                this.MarkTooltipDirty();
             });
 
             // Setup bank account
@@ -607,11 +609,11 @@ namespace Eco.Mods.Companies
                 }
                 SetCitizenOf(deed.CachedAssignedSettlementOfStake);
                 ForceUpdateHQSize();
-                SendCompanyMessage(Localizer.Do($"{this.UILink()} is now the owner of {deed.UILink()}"));
+                SendCompanyMessage(Localizer.Do($"{deed.UILink()} is now the new HQ of {this.UILink()}"));
             }
             else
             {
-                SendCompanyMessage(Localizer.Do($"{deed.UILink()} is now the new HQ of {this.UILink()}"));
+                SendCompanyMessage(Localizer.Do($"{this.UILink()} is now the owner of {deed.UILink()}"));
             }
             UpdateDeedAuthList(deed);
         }
@@ -648,6 +650,28 @@ namespace Eco.Mods.Companies
                 OnNoLongerOwnerOfProperty(deed);
             }
             MarkTooltipDirty();
+        }
+
+        public bool CheckCitizenshipDesync(out LocString errorMessage)
+        {
+            if (DirectCitizenship != null && !DirectCitizenship.Citizenship.HasCitizen(LegalPerson))
+            {
+                errorMessage = Localizer.Do($"{this.UILink()} was a citizen of {DirectCitizenship.UILink()} but not on the roster, removing...");
+                LegalPerson.DirectCitizenship = null;
+                return true;
+            }
+            foreach (var settlement in Registrars.All<Settlement>())
+            {
+                if (settlement.Citizenship.HasCitizen(LegalPerson))
+                {
+                    if (DirectCitizenship == settlement) { break; }
+                    errorMessage = Localizer.Do($"{this.UILink()} was on the roster for {settlement.UILink()} but not a citizen of, updating...");
+                    LegalPerson.DirectCitizenship = settlement;
+                    return true;
+                }
+            }
+            errorMessage = LocString.Empty;
+            return false;
         }
 
         private void SetCitizenOf(Settlement settlement)
