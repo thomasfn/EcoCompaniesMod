@@ -132,25 +132,12 @@ namespace Eco.Mods.Companies
                 LegalPerson = UserManager.Obj.PrepareNewUser(fakeId, fakeId, Registrars.Get<User>().GetUniqueName(CompanyManager.GetLegalPersonName(Name)));
                 LegalPerson.Initialize();
             }
-            this.WatchProp(LegalPerson, nameof(User.DirectCitizenship), (_, ev) =>
+            SettlementCommon.Initializer.RunIfOrWhenInitialized(() =>
             {
-                if (ev.Before is Settlement beforeSettlement)
+                this.WatchProp(LegalPerson, nameof(User.DirectCitizenship), (_, ev) =>
                 {
-                    if (DirectCitizenship != null)
-                    {
-                        SendCompanyMessage(Localizer.Do($"{MarkedUpName} has left {beforeSettlement.UILink()} and joined {DirectCitizenship.UILink()}."));
-                    }
-                    else
-                    {
-                        SendCompanyMessage(Localizer.Do($"{MarkedUpName} has left {beforeSettlement.UILink()}."));
-                    }
-                }
-                else if (DirectCitizenship != null)
-                {
-                    SendCompanyMessage(Localizer.Do($"{MarkedUpName} has joined {DirectCitizenship.UILink()}."));
-                }
-                this.UpdateCitizenships();
-                this.MarkTooltipDirty();
+                    OnLegalPersonCitizenshipChanged(ev);
+                });
             });
 
             // Setup bank account
@@ -528,19 +515,6 @@ namespace Eco.Mods.Companies
             {
                 UpdateCitizenship(user);
             }
-            if (LegalPerson.HomesteadDeed != null)
-            {
-                if (LegalPerson.HomesteadDeed.HostObject.TryGetObject(out var hostObject))
-                {
-                    if (hostObject.TryGetComponent<HomesteadFoundationComponent>(out var foundationComponent))
-                    {
-                        // foundationComponent.CitizenshipUpdated();
-                        typeof(HomesteadFoundationComponent)
-                            .GetMethod("CitizenshipUpdated", BindingFlags.NonPublic | BindingFlags.Instance)
-                            .Invoke(foundationComponent, new object[] { false });
-                    }
-                }
-            }
         }
 
         private void UpdateCitizenship(User user)
@@ -641,6 +615,28 @@ namespace Eco.Mods.Companies
                 SendCompanyMessage(Localizer.Do($"{this.UILink()} is no longer the owner of {deed.UILink()}"));
             }
             deed.Accessors.Clear();
+        }
+
+        private void OnLegalPersonCitizenshipChanged(Core.PropertyHandling.MemberChangedBeforeAfterEventArgs ev)
+        {
+            if (ev.Before is Settlement beforeSettlement)
+            {
+                if (DirectCitizenship != null)
+                {
+                    SendCompanyMessage(Localizer.Do($"{MarkedUpName} has left {beforeSettlement.UILink()} and joined {DirectCitizenship.UILink()}."));
+                }
+                else
+                {
+                    SendCompanyMessage(Localizer.Do($"{MarkedUpName} has left {beforeSettlement.UILink()}."));
+                }
+            }
+            else if (DirectCitizenship != null)
+            {
+                SendCompanyMessage(Localizer.Do($"{MarkedUpName} has joined {DirectCitizenship.UILink()}."));
+            }
+            UpdateCitizenships();
+            MarkTooltipDirty();
+            LegalPerson.MarkDirty();
         }
 
         public void OnNoLongerOwnerOfProperty(IEnumerable<Deed> deeds)
