@@ -10,6 +10,7 @@ namespace Eco.Mods.Companies
     using Core.Systems;
     using Core.Utils;
     using Core.Properties;
+    using Core.Serialization;
 
     using Gameplay.Utils;
     using Gameplay.Systems.Tooltip;
@@ -18,6 +19,7 @@ namespace Eco.Mods.Companies
     using Gameplay.Systems.Messaging.Notifications;
     using Gameplay.Systems.NewTooltip;
     using Gameplay.Items;
+    using Gameplay.Items.InventoryRelated;
     using Gameplay.Economy;
     using Gameplay.GameActions;
     using Gameplay.Aliases;
@@ -28,7 +30,8 @@ namespace Eco.Mods.Companies
     using Gameplay.Components;
     using Gameplay.Objects;
     using Gameplay.UI;
-
+    using Gameplay.Systems;
+    
     using Shared.Serialization;
     using Shared.Localization;
     using Shared.Services;
@@ -65,7 +68,7 @@ namespace Eco.Mods.Companies
             => GetFromLegalPerson(alias.OneUser());
 
         public static Company GetFromBankAccount(BankAccount bankAccount)
-            => Registrars.Get<Company>().Where(x => x.BankAccount == bankAccount).SingleOrDefault();
+            => Registrars.Get<Company>().Where(x => x.DoesOwnBankAccount(bankAccount)).FirstOrDefault();
 
         public static Company GetFromHQ(Deed deed)
             => Registrars.Get<Company>().Where(x => x.HQDeed == deed).SingleOrDefault();
@@ -111,6 +114,11 @@ namespace Eco.Mods.Companies
             => LegalPerson == null ? Enumerable.Empty<Deed>() :
                 PropertyManager.GetAllDeeds()
                     .Where(deed => deed?.Owners?.ContainsUser(LegalPerson) ?? false);
+
+        public IEnumerable<BankAccount> OwnedAccounts
+            => LegalPerson == null ? Enumerable.Empty<BankAccount>() :
+                BankAccountManager.Obj.ManagedAccounts(LegalPerson)
+                    .Where(account => account == BankAccount || (account is not PersonalBankAccount && account is not GovernmentBankAccount));
 
         public IEnumerable<ShareholderHolding> Shareholders =>
             Ceo != null ? Enumerable.Repeat(new ShareholderHolding(Ceo, 1.0f), 1) : Enumerable.Empty<ShareholderHolding>();
@@ -159,6 +167,9 @@ namespace Eco.Mods.Companies
             HQPlots?.OnChanged.AddUnique(FixupHQSize);
             ForceUpdateHQSize();
         }
+
+        public bool DoesOwnBankAccount(BankAccount bankAccount)
+            => bankAccount == BankAccount || (bankAccount is not PersonalBankAccount && bankAccount is not GovernmentBankAccount && bankAccount.DualPermissions.CanAccess(LegalPerson, AccountAccess.Manage));
 
         #region Employee Management
 
@@ -505,7 +516,10 @@ namespace Eco.Mods.Companies
             {
                 UpdateDeedAuthList(deed);
             }
-            UpdateBankAccountAuthList(BankAccount);
+            foreach (var account in OwnedAccounts)
+            {
+                UpdateBankAccountAuthList(account);
+            }
         }
 
         public void UpdateCitizenships()
@@ -540,6 +554,22 @@ namespace Eco.Mods.Companies
                     user.DirectCitizenship.Citizenship.DirectCitizenRoster.Leave(user, true);
                 }
             }
+        }
+
+        public void OnLegalPersonGainedVoidStorage(VoidStorageWrapper voidStorage)
+        {
+            // Logger.Debug($"{LegalPerson.Name} now has a new void storage {voidStorage.Name}, authing all employees...");
+            voidStorage.CanAccess.AddUniqueRange(AllEmployees);
+        }
+
+        private void UpdateVoidStorages()
+        {
+            foreach (var voidStorage in GlobalData.Obj.VoidStorageManager.VoidStorages.Where(x => x.CanUserAccess(LegalPerson)))
+            {
+                OnLegalPersonGainedVoidStorage(voidStorage);
+            }
+            GlobalData.Obj.VoidStorageManager.Changed(nameof(GlobalData.Obj.VoidStorageManager.AccessibleVoidStorages));
+            GameData.Obj.SaveAll();
         }
 
         private void OnEmployeesChanged()
@@ -743,10 +773,11 @@ namespace Eco.Mods.Companies
             }
         }
 
-        private void UpdateBankAccountAuthList(BankAccount bankAccount)
+        public void UpdateBankAccountAuthList(BankAccount bankAccount)
         {
             bankAccount.DualPermissions.ManagerSet.Set(Enumerable.Repeat(LegalPerson, 1));
             bankAccount.DualPermissions.UserSet.Set(AllEmployees);
+            if (bankAccount != BankAccount) { MarkTooltipDirty(); }
         }
 
         private void MarkTooltipDirty()
@@ -802,7 +833,7 @@ namespace Eco.Mods.Companies
             sb.AppendLine(TextLoc.HeaderLoc($"Employees:"));
             sb.AppendLine(this.Employees.Any() ? this.Employees.Select(x => x.UILinkNullSafe()).InlineFoldoutListLoc("citizen", TooltipOrigin.None, 5) : Localizer.DoStr("None."));
             sb.Append(TextLoc.HeaderLoc($"Finances: "));
-            sb.AppendLineLoc($"{BankAccount.UILinkNullSafe()}");
+            sb.AppendLine(this.OwnedAccounts.Any() ? this.OwnedAccounts.Select(x => x.UILinkNullSafe()).InlineFoldoutListLoc("account", TooltipOrigin.None, 5) : Localizer.DoStr("None."));
             sb.Append(TextLoc.HeaderLoc($"HQ: "));
             sb.AppendLine(this.HQDeed != null ? this.HQDeed.UILink() : Localizer.DoStr("None."));
             sb.AppendLine(TextLoc.HeaderLoc($"Property:"));

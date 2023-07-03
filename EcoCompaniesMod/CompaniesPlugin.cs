@@ -28,8 +28,11 @@ namespace Eco.Mods.Companies
     using Gameplay.Civics.Laws;
     using Gameplay.Aliases;
     using Gameplay.Items;
+    using Gameplay.Items.InventoryRelated;
     using Gameplay.GameActions;
     using Gameplay.Utils;
+    using Gameplay.Economy;
+    using Gameplay.Systems;
 
     using Simulation.Time;
 
@@ -88,6 +91,8 @@ namespace Eco.Mods.Companies
     [Localized, LocDisplayName(nameof(CompaniesPlugin)), Priority(PriorityAttribute.High)]
     public class CompaniesPlugin : Singleton<CompaniesPlugin>, IModKitPlugin, IConfigurablePlugin, IInitializablePlugin, ISaveablePlugin, IContainsRegistrars
     {
+        private bool ignoreBankAccountPermissionsChanged = false;
+
         public IPluginConfig PluginConfig => config;
 
         private PluginConfig<CompaniesConfig> config;
@@ -127,6 +132,37 @@ namespace Eco.Mods.Companies
             data.Initialize();
             InstallLawManagerHack();
             InstallGameValueHack();
+            BankAccount.PermissionsChangedEvent.Add(OnBankAccountPermissionsChanged);
+            GameData.Obj.VoidStorageManager.VoidStorages.Callbacks.OnAdd.Add(OnVoidStorageAdded);
+        }
+
+        private void OnBankAccountPermissionsChanged(BankAccount bankAccount)
+        {
+            if (ignoreBankAccountPermissionsChanged) { return; }
+            if (bankAccount == null || bankAccount.DualPermissions == null) { return; }
+            var company = Company.GetFromBankAccount(bankAccount);
+            if (company == null) { return; }
+            try
+            {
+                ignoreBankAccountPermissionsChanged = true;
+                // Logger.Debug($"Got OnBankAccountPermissionsChanged for {bankAccount.Name}, setting ownership to {company.Name}");
+                company.UpdateBankAccountAuthList(bankAccount);
+            }
+            finally
+            {
+                ignoreBankAccountPermissionsChanged = false;
+            }
+        }
+
+        private void OnVoidStorageAdded(INetObject netObj, object obj)
+        {
+            if (obj is not VoidStorageWrapper voidStorage) { return; }
+            foreach (var alias in voidStorage.CanAccess)
+            {
+                var company = Company.GetFromLegalPerson(alias);
+                if (company == null) { continue; }
+                company.OnLegalPersonGainedVoidStorage(voidStorage);
+            }
         }
 
         private void InstallLawManagerHack()

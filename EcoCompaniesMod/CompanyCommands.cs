@@ -1,5 +1,4 @@
-﻿using Eco.Gameplay.Civics.GameValues;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 
 namespace Eco.Mods.Companies
 {
@@ -8,8 +7,9 @@ namespace Eco.Mods.Companies
     using Gameplay.Players;
     using Gameplay.Systems.TextLinks;
     using Gameplay.Systems.Messaging.Chat.Commands;
-    using Eco.Gameplay.Settlements;
-    using Eco.Core.Controller;
+    using Gameplay.Civics.GameValues;
+    using Gameplay.Settlements;
+    using Gameplay.Items;
 
     [ChatCommandHandler]
     public static class CompanyCommands
