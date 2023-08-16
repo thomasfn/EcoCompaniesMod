@@ -12,7 +12,7 @@ namespace Eco.Mods.Companies
     using Gameplay.Players;
     using Gameplay.GameActions;
     using Gameplay.Property;
-    using Gameplay.Systems.Tooltip;
+    using Gameplay.Systems.NewTooltip;
     using Gameplay.Systems.Messaging.Notifications;
     using Gameplay.Systems.TextLinks;
     using Gameplay.Settlements.ClaimStakes;

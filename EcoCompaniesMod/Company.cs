@@ -13,7 +13,6 @@ namespace Eco.Mods.Companies
     using Core.Serialization;
 
     using Gameplay.Utils;
-    using Gameplay.Systems.Tooltip;
     using Gameplay.Players;
     using Gameplay.Systems.TextLinks;
     using Gameplay.Systems.Messaging.Notifications;

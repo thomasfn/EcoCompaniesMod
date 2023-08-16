@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Eco.Mods.Companies.GameActions
 {
@@ -6,6 +8,7 @@ namespace Eco.Mods.Companies.GameActions
     using Gameplay.Economy;
     using Gameplay.GameActions;
     using Gameplay.Civics;
+    using Gameplay.Settlements;
 
     using Shared.Localization;
     using Shared.Networking;
@@ -19,5 +22,7 @@ namespace Eco.Mods.Companies.GameActions
         [Eco, LocDescription("The currency of the transfer."), CanAutoAssign] public override Currency Currency { get; set; }
         [Eco, LocDescription("The amount of money transfered.")] public override float CurrencyAmount { get; set; }
         [Eco, LocDescription("The legal person of the company who sent the money."), CanAutoAssign] public User SenderLegalPerson { get; set; }
+
+        public override IEnumerable<Settlement> SettlementScopes => SenderLegalPerson?.AllCitizenships ?? Enumerable.Empty<Settlement>(); //Scope based on company citizenship
     }
 }
