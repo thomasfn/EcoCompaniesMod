@@ -1,8 +1,10 @@
 ﻿using System.Threading.Tasks;
+using System.Linq;
 
 namespace Eco.Mods.Companies
 {
     using Shared.Localization;
+    using Shared.Utils;
 
     using Gameplay.Players;
     using Gameplay.Systems.TextLinks;
@@ -10,6 +12,8 @@ namespace Eco.Mods.Companies
     using Gameplay.Civics.GameValues;
     using Gameplay.Settlements;
     using Gameplay.Items;
+    using Gameplay.Property;
+    using Gameplay.UI;
 
     [ChatCommandHandler]
     public static class CompanyCommands
@@ -140,11 +144,31 @@ namespace Eco.Mods.Companies
                 user.OkBoxLoc($"Couldn't set claim mode as {currentEmployer.MarkedUpName} does not currently have a HQ");
                 return;
             }
-            if (user.SelectedItem is not ClaimToolBaseItem claimTool)
+            if (user.ToolbarSelected?.Item is not ClaimToolBaseItem claimTool)
             {
                 user.OkBoxLoc($"Couldn't set claim mode as you're not currently holding a claim tool");
                 return;
             }
+
+            if (currentEmployer.OwnedDeeds.Count() > 1)
+            {
+                if (user.Player == null) { return; }
+                var task = user.Player?.PopupSelectFromOptions(
+                    Localizer.Do($"Choose Company Deed for Claim Tool"), Localizer.DoStr("Deed"), LocString.Empty,
+                    currentEmployer.OwnedDeeds, currentEmployer.HQDeed.SingleItemAsEnumerable(), Shared.UI.MultiSelectorPopUpFlags.None,
+                    Localizer.Do($"This list shows company deeds you own and can claim/unclaim plots for.")
+                );
+                task.ContinueWith(x =>
+                {
+                    claimTool.Deed = x.Result.FirstOrDefault() as Deed;
+                    typeof(ClaimToolBaseItem)
+                        .GetMethod("SetClaimMode", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                        .Invoke(claimTool, new object[] { user.Player });
+                    user.MsgLoc($"Your claim tool has been set to {currentEmployer.HQDeed.UILink()}.");
+                });
+                return;
+            }
+
             claimTool.Deed = currentEmployer.HQDeed;
             typeof(ClaimToolBaseItem)
                 .GetMethod("SetClaimMode", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
