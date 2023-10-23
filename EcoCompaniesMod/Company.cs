@@ -116,8 +116,8 @@ namespace Eco.Mods.Companies
 
         public IEnumerable<BankAccount> OwnedAccounts
             => LegalPerson == null ? Enumerable.Empty<BankAccount>() :
-                BankAccountManager.Obj.ManagedAccounts(LegalPerson)
-                    .Where(account => account == BankAccount || (account is not PersonalBankAccount && account is not GovernmentBankAccount));
+                BankAccountManager.Obj.Accounts
+                    .Where(account => (account == BankAccount || (account is not PersonalBankAccount && account is not GovernmentBankAccount)) && account.DualPermissions.ManagerSet.ContainsUser(LegalPerson));
 
         public IEnumerable<ShareholderHolding> Shareholders =>
             Ceo != null ? Enumerable.Repeat(new ShareholderHolding(Ceo, 1.0f), 1) : Enumerable.Empty<ShareholderHolding>();
@@ -356,7 +356,7 @@ namespace Eco.Mods.Companies
         private bool CheckLegalPersonCanLeaveSettlement(out LocString errorMessage)
         {
             var topParent = DirectCitizenship.TopParent();
-            foreach (var settlement in topParent.AllChildrenSettlementsRecursive())
+            foreach (var settlement in topParent.SelfAndAllChildrenSettlementsRecursive())
             {
                 var currentImmigrationPolicies = settlement.ImmigrationPolicy;
                 var result = currentImmigrationPolicies.CanLeaveWithProperties(LegalPerson, out var deedsInSettlement);
