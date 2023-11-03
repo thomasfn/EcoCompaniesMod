@@ -585,9 +585,11 @@ namespace Eco.Mods.Companies
             {
                 LegalPerson.HomesteadDeed = deed;
                 Registrars.Get<Deed>().Rename(deed, $"{Name} HQ", true);
-                
+
+                Settlement? oldOwnerCitizenship = null;
                 if (deed.HostObject.TryGetObject(out var hostObject))
                 {
+                    oldOwnerCitizenship = hostObject.Creator.DirectCitizenship;
                     //hostObject.Creator = LegalPerson;
                     typeof(WorldObject)
                         .GetProperty("Creator", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
@@ -610,7 +612,11 @@ namespace Eco.Mods.Companies
                         plotsComponent.OnChanged.AddUnique(FixupHQSize);
                     }
                 }
-                SetCitizenOf(deed.CachedAssignedSettlementOfStake);
+                if (deed.CachedAssignedSettlementOfStake == null)
+                {
+                    deed.UpdateInfluencingSettlement();
+                }
+                SetCitizenOf(deed.CachedAssignedSettlementOfStake ?? oldOwnerCitizenship);
                 ForceUpdateHQSize();
                 SendCompanyMessage(Localizer.Do($"{deed.UILink()} is now the new HQ of {this.UILink()}"));
             }

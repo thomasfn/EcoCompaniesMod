@@ -282,7 +282,7 @@ namespace Eco.Mods.Companies
                 // This deed will become their HQ
                 lawPostResult.AddPostEffect(() =>
                 {
-                    ClaimHomesteadAsHQ(placeOrPickUpObject.Citizen, employer);
+                    ClaimHomesteadAsHQAsyncRetry(placeOrPickUpObject.Citizen, employer);
                 });
             }
 
@@ -329,13 +329,18 @@ namespace Eco.Mods.Companies
             {
                 if (allowAsyncRetry)
                 {
-                    Task.Delay(250).ContinueWith((t) => ClaimHomesteadAsHQ(employee, employer, false));
+                    ClaimHomesteadAsHQAsyncRetry(employee, employer);
                     return;
                 }
                 Logger.Error($"ClaimHomesteadAsHQ failed as employee.HomesteadDeed was null");
                 return;
             }
             ClaimHomesteadAsHQ(employee, deed, employer);
+        }
+
+        private void ClaimHomesteadAsHQAsyncRetry(User employee, Company employer)
+        {
+            Task.Delay(250).ContinueWith((t) => ClaimHomesteadAsHQ(employee, employer, false));
         }
 
         private void TryFixupDodgyDeeds(User user)
