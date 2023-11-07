@@ -35,6 +35,7 @@ namespace Eco.Mods.Companies
     using Gameplay.Systems;
 
     using Simulation.Time;
+    using Eco.Gameplay.Economy.Transfer;
 
     [Localized]
     public class CompaniesConfig
@@ -73,9 +74,9 @@ namespace Eco.Mods.Companies
             this.internalLawManager = internalLawManager;
         }
 
-        public PostResult Perform(GameAction action)
+        public PostResult Perform(GameAction action, AccountChangeSet acc)
         {
-            var result = internalLawManager.Perform(action);
+            var result = internalLawManager.Perform(action, acc);
             if (action is PlaceOrPickUpObject placeOrPickUpObject)
             {
                 CompanyManager.Obj.InterceptPlaceOrPickupObjectGameAction(placeOrPickUpObject, ref result);
