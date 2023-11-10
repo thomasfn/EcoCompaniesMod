@@ -274,7 +274,7 @@ namespace Eco.Mods.Companies
                 case "refreshsize":
                     if (currentEmployer.HQDeed != null)
                     {
-                        currentEmployer.ForceUpdateHQSize();
+                        currentEmployer.RefreshHQPlotsSize();
                         user.MsgLoc($"HQ size refreshed ({currentEmployer.HQDeed.UILinkNullSafe()} should have {currentEmployer.HQSize} base max plots)");
                     }
                     else
