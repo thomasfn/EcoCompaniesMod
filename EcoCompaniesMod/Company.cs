@@ -163,15 +163,13 @@ namespace Eco.Mods.Companies
             }
 
             // Setup HQ deed
-            var hqPlots = HQPlots;
-            if (hqPlots != null) { AddBasePlotsOverride(hqPlots); }
+            RefreshHQPlotsSize();
         }
 
         [OnDeserialized]
         void OnDeserialized()
         {
-            var hqPlots = HQPlots;
-            if (hqPlots != null) { AddBasePlotsOverride(hqPlots); }
+            RefreshHQPlotsSize();
         }
 
         public bool DoesOwnBankAccount(BankAccount bankAccount)
@@ -471,11 +469,15 @@ namespace Eco.Mods.Companies
             if (plots.GetModdedBaseClaims == GetModdedBaseClaims) { return; }
             plots.GetModdedBaseClaims = GetModdedBaseClaims;
             RefreshPlotsSize(plots, true);
+            plots.ResizeDeedWhenNecessary = false;
+            plots.Parent.SetDirty();
         }
 
         private void RemoveBasePlotsOverride(PlotsComponent plots)
         {
             plots.GetModdedBaseClaims = null;
+            plots.ResizeDeedWhenNecessary = true;
+            plots.Parent.SetDirty();
             RefreshPlotsSize(plots, false);
         }
 
@@ -499,7 +501,7 @@ namespace Eco.Mods.Companies
         {
             var hqPlots = HQPlots;
             if (hqPlots == null) { return; }
-            RefreshPlotsSize(hqPlots, true);
+            AddBasePlotsOverride(hqPlots);
         }
 
         private int GetModdedBaseClaims() => HQSize;
@@ -537,12 +539,15 @@ namespace Eco.Mods.Companies
                         AddBasePlotsOverride(plotsComponent);
                     }
                 }
-                if (deed.CachedAssignedSettlementOfStake == null)
+                if (deed.CachedOwningSettlement == null)
                 {
                     deed.UpdateInfluencingSettlement();
                 }
-                SetCitizenOf(deed.CachedAssignedSettlementOfStake ?? oldOwnerCitizenship);
+                SetCitizenOf(deed.CachedOwningSettlement ?? oldOwnerCitizenship);
                 SendCompanyMessage(Localizer.Do($"{deed.UILink()} is now the new HQ of {this.UILink()}"));
+
+                deed.Residency.AllowPropertyChanges = true;
+                deed.MarkDirty();
             }
             else
             {
@@ -796,6 +801,8 @@ namespace Eco.Mods.Companies
             if (deed == HQDeed)
             {
                 deed.Residency.Invitations.InvitationList.Set(AllEmployees);
+                deed.Residency.AllowPropertyChanges = true;
+                deed.MarkDirty();
             }
         }
 
