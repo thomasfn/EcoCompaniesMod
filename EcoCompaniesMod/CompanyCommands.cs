@@ -288,6 +288,27 @@ namespace Eco.Mods.Companies
             }
         }
 
+        [ChatSubCommand("Company", "Provides admin-only options for company employee management.", ChatAuthorizationLevel.Admin)]
+        public static void Force(User user, Company targetCompany, User targetUser, string verb)
+        {
+            switch (verb)
+            {
+                case "employ":
+                    targetCompany.ForceJoin(targetUser);
+                    break;
+                case "fire":
+                    targetCompany.ForceLeave(targetUser);
+                    break;
+                case "promote":
+                    targetCompany.ForceJoin(targetUser);
+                    targetCompany.ChangeCeo(targetUser);
+                    break;
+                default:
+                    user.MsgLoc($"Valid verbs are 'employ', 'fire' or 'promote'.");
+                    break;
+            }
+        }
+
         /*[ChatSubCommand("Company", "Edits the company owned deed that you're currently standing in.", ChatAuthorizationLevel.User)]
         public static void EditDeed(User user)
         {

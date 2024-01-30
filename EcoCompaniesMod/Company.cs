@@ -296,6 +296,20 @@ namespace Eco.Mods.Companies
             return true;
         }
 
+        public void ForceJoin(User user)
+        {
+            var oldEmployer = GetEmployer(user);
+            if (oldEmployer != null)
+            {
+                oldEmployer.ForceLeave(user);
+            }
+            if (!Employees.Add(user)) { return; }
+            InviteList.Remove(user);
+            OnEmployeesChanged();
+            MarkPerUserTooltipDirty(user);
+            SendCompanyMessage(Localizer.Do($"{user.UILink()} has joined the company."));
+        }
+
         public bool TryLeave(User user, out LocString errorMessage)
         {
             if (!IsEmployee(user))
@@ -325,6 +339,15 @@ namespace Eco.Mods.Companies
             pack.TryPerform(null);
             errorMessage = LocString.Empty;
             return true;
+        }
+
+        public void ForceLeave(User user)
+        {
+            if (user == Ceo) { return; }
+            if (!Employees.Remove(user)) { return; }
+            OnEmployeesChanged();
+            MarkPerUserTooltipDirty(user);
+            SendCompanyMessage(Localizer.Do($"{user.UILink()} has been ejected from the company."));
         }
 
         #endregion
@@ -546,7 +569,7 @@ namespace Eco.Mods.Companies
                 SetCitizenOf(deed.CachedOwningSettlement ?? oldOwnerCitizenship);
                 SendCompanyMessage(Localizer.Do($"{deed.UILink()} is now the new HQ of {this.UILink()}"));
 
-                deed.Residency.AllowPropertyChanges = true;
+                deed.Residency.AllowPlotsUnclaiming = true;
                 deed.MarkDirty();
             }
             else
@@ -801,7 +824,7 @@ namespace Eco.Mods.Companies
             if (deed == HQDeed)
             {
                 deed.Residency.Invitations.InvitationList.Set(AllEmployees);
-                deed.Residency.AllowPropertyChanges = true;
+                deed.Residency.AllowPlotsUnclaiming = true;
                 deed.MarkDirty();
             }
         }
