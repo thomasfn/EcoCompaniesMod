@@ -354,6 +354,8 @@ namespace Eco.Mods.Companies
 
         #region Citizenship Management
 
+        private static readonly FieldInfo userRosterCanBeMember = typeof(UserRoster).GetField(nameof(UserRoster.CanBeMember), BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+
         private bool CheckLegalPersonCanJoinSettlement(Settlement target, out LocString errorMessage)
         {
             var canJoinResult = target.ImmigrationPolicy?.CheckCanJoinAsCitizen(LegalPerson) ?? Result.Succeeded;
@@ -362,24 +364,29 @@ namespace Eco.Mods.Companies
                 errorMessage = canJoinResult.Message;
                 return false;
             }
-            var canBeMemberEventDelegate = (MulticastDelegate)typeof(UserRoster)
-                .GetField(nameof(UserRoster.CanBeMember), BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
-                .GetValue(target.Citizenship.DirectCitizenRoster);
-            if (canBeMemberEventDelegate == null)
+            if (userRosterCanBeMember == null)
+            {
+                Logger.Error($"Failed to retrieve the CanBeMember field info from UserRoster");
+                errorMessage = Localizer.DoStr($"Couldn't join {target.MarkedUpName} due to an internal error");
+                return false;
+            }
+            if (userRosterCanBeMember.GetValue(target.Citizenship.DirectCitizenRoster) is not MulticastDelegate canBeMemberEventDelegate)
             {
                 Logger.Error($"Failed to retrieve the CanBeMember event delegate from UserRoster");
                 errorMessage = Localizer.DoStr($"Couldn't join {target.MarkedUpName} due to an internal error");
                 return false;
             }
-            var canBeMemberResult = (bool)canBeMemberEventDelegate.DynamicInvoke(LegalPerson, null);
-            if (!canBeMemberResult)
+            var canBeMemberResult = (Result)canBeMemberEventDelegate.DynamicInvoke(LegalPerson, null);
+            if (!canBeMemberResult.Success)
             {
-                errorMessage = Localizer.DoStr($"Couldn't join {target.MarkedUpName} as {MarkedUpName} is already a member of another settlement and has property there");
+                errorMessage = Localizer.DoStr($"Couldn't join {target.MarkedUpName} as {canBeMemberResult.Message}");
                 return false;
             }
             errorMessage = LocString.Empty;
             return true;
         }
+
+        private static readonly MethodInfo settlementCitizenshipCheckAllowUserWithHomesteadFromLeaving = typeof(SettlementCitizenship).GetMethod("CheckAllowUserWithHomesteadFromLeaving", BindingFlags.Instance | BindingFlags.NonPublic);
 
         private bool CheckLegalPersonCanLeaveSettlement(out LocString errorMessage)
         {
@@ -395,11 +402,16 @@ namespace Eco.Mods.Companies
                     return false;
                 }
             }
-            if (!(bool)typeof(SettlementCitizenship)
-                .GetMethod("PreventUserWithHomesteadFromLeaving", BindingFlags.Instance | BindingFlags.NonPublic)
-                .Invoke(DirectCitizenship.Citizenship, new object[] { LegalPerson, false }))
+            if (settlementCitizenshipCheckAllowUserWithHomesteadFromLeaving == null)
             {
-                errorMessage = Localizer.DoStr($"Couldn't leave {DirectCitizenship.MarkedUpName} as {MarkedUpName} holds property there.");
+                Logger.Error($"Failed to retrieve the CheckAllowUserWithHomesteadFromLeaving method info from SettlementCitizenship");
+                errorMessage = Localizer.DoStr($"Couldn't leave {DirectCitizenship.MarkedUpName} due to an internal error");
+                return false;
+            }
+            var checkAllowUserWithHomesteadFromLeavingResult = (Result)settlementCitizenshipCheckAllowUserWithHomesteadFromLeaving.Invoke(DirectCitizenship.Citizenship, new object[] { LegalPerson, false });
+            if (!checkAllowUserWithHomesteadFromLeavingResult.Success)
+            {
+                errorMessage = Localizer.DoStr($"Couldn't leave {DirectCitizenship.MarkedUpName} as {checkAllowUserWithHomesteadFromLeavingResult.Message}");
                 return false;
             }
             errorMessage = LocString.Empty;
