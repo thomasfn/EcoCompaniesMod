@@ -541,6 +541,10 @@ namespace Eco.Mods.Companies
 
         private int GetModdedBaseClaims() => HQSize;
 
+        private static readonly PropertyInfo worldObjectCreator = typeof(WorldObject).GetProperty("Creator", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        private static readonly MethodInfo worldObjectUpdateOwnerName = typeof(WorldObject).GetMethod("UpdateOwnerName", BindingFlags.NonPublic | BindingFlags.Instance);
+        private static readonly MethodInfo homesteadFoundationComponentCitizenshipUpdated = typeof(HomesteadFoundationComponent).GetMethod("CitizenshipUpdated", BindingFlags.NonPublic | BindingFlags.Instance);
+
         public void OnNowOwnerOfProperty(Deed deed)
         {
             if (deed.IsHomesteadDeed)
@@ -553,21 +557,36 @@ namespace Eco.Mods.Companies
                 {
                     oldOwnerCitizenship = hostObject.Creator.DirectCitizenship;
                     //hostObject.Creator = LegalPerson;
-                    typeof(WorldObject)
-                        .GetProperty("Creator", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                        .SetValue(hostObject, LegalPerson, null);
-                    //hostObject.UpdateOwnerName();
-                    typeof(WorldObject)
-                        .GetMethod("UpdateOwnerName", BindingFlags.NonPublic | BindingFlags.Instance)
-                        .Invoke(hostObject, null);
+                    if (worldObjectCreator == null)
+                    {
+                        Logger.Error($"Failed to find property WorldObject.Creator via reflection");
+                    }
+                    else
+                    {
+                        worldObjectCreator.SetValue(hostObject, LegalPerson, null);
+                    }
+                    //hostObject.UpdateOwnerName(OwnerChangeType.Normal);
+                    if (worldObjectUpdateOwnerName == null)
+                    {
+                        Logger.Error($"Failed to find property WorldObject.UpdateOwnerName via reflection");
+                    }
+                    else
+                    {
+                        worldObjectUpdateOwnerName.Invoke(hostObject, new object[] { OwnerChangeType.Normal });
+                    }
                     deed.UpdateInfluencingSettlement();
 
                     if (hostObject.TryGetComponent<HomesteadFoundationComponent>(out var foundationComponent))
                     {
                         // foundationComponent.CitizenshipUpdated(true);
-                        typeof(HomesteadFoundationComponent)
-                            .GetMethod("CitizenshipUpdated", BindingFlags.NonPublic | BindingFlags.Instance)
-                            .Invoke(foundationComponent, new object[] { true });
+                        if (homesteadFoundationComponentCitizenshipUpdated == null)
+                        {
+                            Logger.Error($"Failed to find method HomesteadFoundationComponent.CitizenshipUpdated via reflection");
+                        }
+                        else
+                        {
+                            homesteadFoundationComponentCitizenshipUpdated.Invoke(foundationComponent, new object[] { true });
+                        }
                     }
                     if (hostObject.TryGetComponent<PlotsComponent>(out var plotsComponent))
                     {

@@ -19,14 +19,14 @@ namespace Eco.Mods.Companies
     using Gameplay.Civics.GameValues;
     using Gameplay.Auth;
     using Gameplay.Aliases;
+    using Gameplay.Settlements;
+    using Gameplay.Settlements.Components;
+    using Gameplay.Items;
 
     using Shared.Utils;
     using Shared.Localization;
     using Shared.Items;
     using Shared.Services;
-    using Eco.Gameplay.Settlements.Components;
-    using Eco.Gameplay.Items;
-    using Eco.Gameplay.Settlements;
 
     public partial class CompanyManager : Singleton<CompanyManager>, IGameActionAware
     {
@@ -302,12 +302,7 @@ namespace Eco.Mods.Companies
 
         private void FixupHomesteadClaimItems(User employee)
         {
-            var userField = typeof(HomesteadClaimStakeItem).GetField("user", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            if (userField == null)
-            {
-                Logger.Error($"Failed to retrieve 'user' field via reflection on HomesteadClaimStakeItem");
-                return;
-            }
+
             var company = Company.GetEmployer(employee);
             if (company == null) { return; }
             // Sweep their inv looking for HomesteadClaimStakeItem items with the "user" field set to the legal person and change it to point at them instead
@@ -315,9 +310,8 @@ namespace Eco.Mods.Companies
             {
                 if (stack.Item is not HomesteadClaimStakeItem homesteadClaimStakeItem) { continue; }
                 if (!homesteadClaimStakeItem.IsUnique) { continue; }
-                var currentUser = userField.GetValue(homesteadClaimStakeItem) as User;
-                if (currentUser != company.LegalPerson) { continue; }
-                userField.SetValue(homesteadClaimStakeItem, employee);
+                if (homesteadClaimStakeItem.User != company.LegalPerson) { continue; }
+                homesteadClaimStakeItem.User = employee;
                 Logger.Debug($"Fixed up '{stack}' (homestead claim stake) to be keyed to '{employee.Name}' instead of {company.LegalPerson.Name}' after HQ deed was lifted");
             }
         }
