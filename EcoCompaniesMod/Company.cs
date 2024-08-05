@@ -547,16 +547,16 @@ namespace Eco.Mods.Companies
             var newPlotCount = (plots.ClaimPapersInventory?.TotalNumberOfItems(typeof(ClaimPaperItem)) ?? 0) + (hq ? HQSize : ServiceHolder<SettlementConfig>.Obj.BasePlotsOnHomesteadClaimStake);
             if (newPlotCount != plots.Parent.GetDeed()?.AllowedPlots)
             {
-                var claimsUpdatedMethod = typeof(PlotsComponent)
-                    .GetMethod("ClaimsUpdated", BindingFlags.NonPublic | BindingFlags.Instance);
+                var claimsUpdatedMethod = typeof(PlotsComponent).GetMethod("UpdateClaimData", BindingFlags.NonPublic | BindingFlags.Instance);
                 if (claimsUpdatedMethod == null)
                 {
-                    Logger.Error($"Failed to find method PlotsComponent.ClaimsUpdated via reflection");
+                    Logger.Error($"Failed to find method PlotsComponent.UpdateClaimData via reflection");
                     return;
                 }
-                claimsUpdatedMethod.Invoke(plots, new object[] { null });
-            }
-        }
+
+				claimsUpdatedMethod.Invoke(plots, new object[] { null });
+			}
+		}
 
         public void RefreshHQPlotsSize()
         {
