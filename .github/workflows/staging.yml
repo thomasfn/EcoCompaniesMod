@@ -9,7 +9,7 @@ jobs:
   build-mod:
     runs-on: ubuntu-latest
     env:
-      MODKIT_VERSION: 0.11.0.0-beta-playtest-482
+      MODKIT_VERSION: 0.11.0.0-beta-playtest-496
       ECO_BRANCH: staging
     steps:
     - uses: actions/checkout@v2
@@ -37,5 +37,5 @@ jobs:
     - name: Upload build artifact
       uses: actions/upload-artifact@v2
       with:
-        name: mod-binaries-staging
+        name: ecoCompaniesMod-staging
         path: EcoCompaniesMod/bin/Release/net7.0/EcoCompaniesMod.*

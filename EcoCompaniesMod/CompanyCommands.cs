@@ -299,6 +299,13 @@ namespace Eco.Mods.Companies
                 case "fire":
                     targetCompany.ForceLeave(targetUser);
                     break;
+				case "demote":
+					if (!targetCompany.DemoteCeo(targetUser))
+					{
+						user.MsgLoc($"Please enter the current CEO of {targetCompany.UILink()} as user!");
+					};
+
+					break;
                 case "promote":
                     targetCompany.ForceJoin(targetUser);
                     targetCompany.ChangeCeo(targetUser);

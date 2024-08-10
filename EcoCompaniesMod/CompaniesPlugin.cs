@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Reflection;
 using System.Collections.Generic;
+using Eco.Server;
 
 namespace Eco.Mods.Companies
 {
@@ -36,6 +37,7 @@ namespace Eco.Mods.Companies
     using Gameplay.Property;
 
     using Simulation.Time;
+	using System.Threading.Tasks;
 
     [Localized]
     public class CompaniesConfig
@@ -55,12 +57,7 @@ namespace Eco.Mods.Companies
 
         public void InitializeRegistrars()
         {
-            this.Companies.PreInit(Localizer.DoStr("Companies"), true, CompaniesPlugin.Obj, Localizer.DoStr("Companies"));
-        }
-
-        public void Initialize()
-        {
-            
+            Companies.PreInit(Localizer.DoStr("Companies"), true, CompaniesPlugin.Obj, Localizer.DoStr("Companies"));
         }
     }
 
@@ -132,8 +129,9 @@ namespace Eco.Mods.Companies
 
         public void Initialize(TimedTask timer)
         {
-            data.Initialize();
-            InstallLawManagerHack();
+			Singleton<PluginManager>.Obj.InitComplete += OnPostInitialize;
+
+			InstallLawManagerHack();
             InstallGameValueHack();
             BankAccount.PermissionsChangedEvent.Add(OnBankAccountPermissionsChanged);
             GameData.Obj.VoidStorageManager.VoidStorages.Callbacks.OnAdd.Add(OnVoidStorageAdded);
@@ -141,7 +139,11 @@ namespace Eco.Mods.Companies
             PropertyManager.DeedOwnerChangedEvent.Add(OnDeedOwnerChanged);
         }
 
-        private void OnBankAccountPermissionsChanged(BankAccount bankAccount)
+		internal static void OnPostInitialize() {
+			Registrars.Get<Company>().ForEach(company => company.RefreshHQPlotsSize());
+		}
+
+		private void OnBankAccountPermissionsChanged(BankAccount bankAccount)
         {
             if (ignoreBankAccountPermissionsChanged) { return; }
             if (bankAccount == null || bankAccount.DualPermissions == null) { return; }

@@ -35,6 +35,9 @@
     <Reference Include="Eco.Stats">
       <HintPath>..\eco-dlls\Eco.Stats.dll</HintPath>
     </Reference>
+    <Reference Include="EcoServer">
+      <HintPath>..\eco-dlls\EcoServer.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>

@@ -59,8 +59,7 @@ namespace Eco.Mods.Companies
     {
         private bool inReceiveMoney, inGiveMoney;
 
-        public static Company GetEmployer(User user)
-            => Registrars.Get<Company>().Where(x => x.IsEmployee(user)).SingleOrDefault();
+		public static Company GetEmployer(User user) => Registrars.Get<Company>().Where(x => x.IsEmployee(user)).SingleOrDefault();
 
         public static Company GetFromLegalPerson(User user)
             => Registrars.Get<Company>().Where(x => x.LegalPerson == user).SingleOrDefault();
@@ -68,8 +67,8 @@ namespace Eco.Mods.Companies
         public static Company GetFromLegalPerson(IAlias alias)
             => GetFromLegalPerson(alias.OneUser());
 
-        public static Company GetFromBankAccount(BankAccount bankAccount)
-            => Registrars.Get<Company>().Where(x => x.DoesOwnBankAccount(bankAccount)).FirstOrDefault();
+		public static Company GetFromBankAccount(BankAccount bankAccount)
+			=> Registrars.Get<Company>().Where(x => x.DoesOwnBankAccount(bankAccount)).FirstOrDefault();
 
         public static Company GetFromHQ(Deed deed)
             => Registrars.Get<Company>().Where(x => x.HQDeed == deed).SingleOrDefault();
@@ -120,18 +119,14 @@ namespace Eco.Mods.Companies
         public IEnumerable<User> AllEmployees
             => (Ceo != null ? Employees?.Prepend(Ceo) : Employees) ?? Enumerable.Empty<User>();
 
-        public IEnumerable<Deed> OwnedDeeds
-            => LegalPerson == null ? Enumerable.Empty<Deed>() :
-                PropertyManager.GetAllDeeds()
-                    .Where(deed => deed?.Owners?.ContainsUser(LegalPerson) ?? false);
+		public IEnumerable<Deed> OwnedDeeds => LegalPerson == null ? Enumerable.Empty<Deed>() : PropertyManager.GetAllDeeds().Where(deed => deed?.Owners?.ContainsUser(LegalPerson) ?? false);
 
         public IEnumerable<BankAccount> OwnedAccounts
             => LegalPerson == null ? Enumerable.Empty<BankAccount>() :
                 BankAccountManager.Obj.Accounts
                     .Where(account => (account == BankAccount || (account is not PersonalBankAccount && account is not GovernmentBankAccount)) && account.DualPermissions.ManagerSet.ContainsUser(LegalPerson));
 
-        public IEnumerable<ShareholderHolding> Shareholders =>
-            Ceo != null ? Enumerable.Repeat(new ShareholderHolding(Ceo, 1.0f), 1) : Enumerable.Empty<ShareholderHolding>();
+		public IEnumerable<ShareholderHolding> Shareholders => Ceo != null ? Enumerable.Repeat(new ShareholderHolding(Ceo, 1.0f), 1) : Enumerable.Empty<ShareholderHolding>();
 
         public override void Initialize()
         {
@@ -146,6 +141,7 @@ namespace Eco.Mods.Companies
                 LegalPerson = TestUtils.MakeTestUser(Registrars.Get<User>().GetUniqueName(CompanyManager.GetLegalPersonName(Name)));
                 LegalPerson.Initialize();
             }
+
             SettlementCommon.Initializer.RunIfOrWhenInitialized(() =>
             {
                 this.WatchProp(LegalPerson, nameof(User.DirectCitizenship), (_, ev) =>
@@ -153,6 +149,7 @@ namespace Eco.Mods.Companies
                     OnLegalPersonCitizenshipChanged(ev);
                 });
             });
+
             PropertyManager.Initializer.RunIfOrWhenInitialized(() =>
             {
                 foreach (var deed in OwnedDeeds)
@@ -175,15 +172,6 @@ namespace Eco.Mods.Companies
                 SharesCurrency = CurrencyManager.GetPlayerCurrency(LegalPerson);
                 SharesCurrency.SetName(null, Registrars.Get<Currency>().GetUniqueName(CompanyManager.GetCompanyCurrencyName(Name)));
             }
-
-            // Setup HQ deed
-            RefreshHQPlotsSize();
-        }
-
-        [OnDeserialized]
-        private void OnDeserialized()
-        {
-            RefreshHQPlotsSize();
         }
 
         public bool DoesOwnBankAccount(BankAccount bankAccount)
@@ -268,9 +256,10 @@ namespace Eco.Mods.Companies
                 MarkPerUserTooltipDirty(target);
                 SendCompanyMessage(Localizer.Do($"{invoker.UILinkNullSafe()} has fired {target.UILink()} from the company."));
             });
-            pack.TryPerform(null);
-            errorMessage = LocString.Empty;
-            return true;
+
+			var actionMessage = pack.TryPerform(null);
+			errorMessage = actionMessage.Message;
+			return !actionMessage.Message.IsSet();
         }
 
         public bool TryJoin(User user, out LocString errorMessage)
@@ -297,26 +286,24 @@ namespace Eco.Mods.Companies
                 Citizen = user,
                 CompanyLegalPerson = LegalPerson,
             });
-            pack.AddPostEffect(() =>
-            {
+			pack.AddPostEffect(() => {
                 if (!InviteList.Remove(user)) { return; }
                 if (!Employees.Add(user)) { return; }
                 OnEmployeesChanged();
                 MarkPerUserTooltipDirty(user);
                 SendCompanyMessage(Localizer.Do($"{user.UILink()} has joined the company."));
             });
-            pack.TryPerform(null);
-            errorMessage = LocString.Empty;
-            return true;
+
+			var actionMessage = pack.TryPerform(null);
+			errorMessage = actionMessage.Message;
+			return !actionMessage.Message.IsSet();
         }
 
         public void ForceJoin(User user)
         {
-            var oldEmployer = GetEmployer(user);
-            if (oldEmployer != null)
-            {
-                oldEmployer.ForceLeave(user);
-            }
+			if (AllEmployees.Contains(user)) { return; }
+
+			GetEmployer(user)?.ForceLeave(user);
             if (!Employees.Add(user)) { return; }
             InviteList.Remove(user);
             OnEmployeesChanged();
@@ -337,22 +324,21 @@ namespace Eco.Mods.Companies
                 return false;
             }
             var pack = new GameActionPack();
-            pack.AddGameAction(new GameActions.CitizenLeaveCompany
-            {
+			pack.AddGameAction(new GameActions.CitizenLeaveCompany {
                 Citizen = user,
                 CompanyLegalPerson = LegalPerson,
                 Fired = false,
             });
-            pack.AddPostEffect(() =>
-            {
+			pack.AddPostEffect(() => {
                 if (!Employees.Remove(user)) { return; }
                 OnEmployeesChanged();
                 MarkPerUserTooltipDirty(user);
                 SendCompanyMessage(Localizer.Do($"{user.UILink()} has resigned from the company."));
             });
-            pack.TryPerform(null);
-            errorMessage = LocString.Empty;
-            return true;
+
+			var actionMessage = pack.TryPerform(null);
+			errorMessage = actionMessage.Message;
+			return !actionMessage.Message.IsSet();
         }
 
         public void ForceLeave(User user)
@@ -582,11 +568,11 @@ namespace Eco.Mods.Companies
 
                 Registrars.Get<Deed>().Rename(deed, $"{Name} HQ", true);
 
-                Settlement? oldOwnerCitizenship = null;
+				Settlement oldOwnerCitizenship = null;
                 if (deed.HostObject.TryGetObject(out var hostObject))
                 {
                     oldOwnerCitizenship = hostObject.Creator.DirectCitizenship;
-                    //hostObject.Creator = LegalPerson;
+
                     if (worldObjectCreator == null)
                     {
                         Logger.Error($"Failed to find property WorldObject.Creator via reflection");
@@ -595,7 +581,7 @@ namespace Eco.Mods.Companies
                     {
                         worldObjectCreator.SetValue(hostObject, LegalPerson, null);
                     }
-                    //hostObject.UpdateOwnerName(OwnerChangeType.Normal);
+
                     if (worldObjectUpdateOwnerName == null)
                     {
                         Logger.Error($"Failed to find property WorldObject.UpdateOwnerName via reflection");
@@ -608,7 +594,6 @@ namespace Eco.Mods.Companies
 
                     if (hostObject.TryGetComponent<HomesteadFoundationComponent>(out var foundationComponent))
                     {
-                        // foundationComponent.CitizenshipUpdated(true);
                         if (homesteadFoundationComponentCitizenshipUpdated == null)
                         {
                             Logger.Error($"Failed to find method HomesteadFoundationComponent.CitizenshipUpdated via reflection");
@@ -631,6 +616,7 @@ namespace Eco.Mods.Companies
                 SendCompanyMessage(Localizer.Do($"{deed.UILink()} is now the new HQ of {this.UILink()}"));
 
                 deed.Residency.AllowPlotsUnclaiming = true;
+				SendCompanyMessage(Localizer.Do($"{deed.UILink()} is now the new HQ of {this.UILink()}"));
             }
             else
             {
@@ -857,14 +843,10 @@ namespace Eco.Mods.Companies
         private void SetCitizenOf(Settlement settlement)
         {
             if (DirectCitizenship == settlement) { return; }
-            if (DirectCitizenship != null)
-            {
-                DirectCitizenship.Citizenship.DirectCitizenRoster.Leave(LegalPerson);
-            }
-            if (settlement != null)
-            {
-                settlement.Citizenship.DirectCitizenRoster.AddToRoster(null, LegalPerson, true);
-            }
+
+			DirectCitizenship?.Citizenship.DirectCitizenRoster.Leave(LegalPerson);
+			settlement?.Citizenship.DirectCitizenRoster.AddToRoster(null, LegalPerson, true);
+
             LegalPerson.DirectCitizenship = settlement;
         }
 
@@ -896,12 +878,36 @@ namespace Eco.Mods.Companies
             ServiceHolder<ITooltipSubscriptions>.Obj.MarkTooltipPartDirty(nameof(PerUserTooltip), instance: this, user: user);
         }
 
+		public bool DemoteCeo(User currentCeo)
+		{
+			if (currentCeo != Ceo)			
+			{
+				return false;
+			}
+
+			SendCompanyMessage(Localizer.Do($"{currentCeo.UILink()} has been removed as CEO."));
+			RemoveCeo();
+
+			return true;
+		}
+
         public void ChangeCeo(User newCeo)
         {
+			RemoveCeo();
+
+			Employees.Remove(newCeo);
             Ceo = newCeo;
-            SendGlobalMessage(Localizer.Do($"{newCeo.UILink()} is now the CEO of {this.UILink()}!"));
+			MarkPerUserTooltipDirty(newCeo);
+
             OnEmployeesChanged();
+			SendGlobalMessage(Localizer.Do($"{newCeo.UILink()} is now the CEO of {this.UILink()}!"));
         }
+
+		private void RemoveCeo() 
+		{
+			Employees.Add(Ceo);
+			MarkPerUserTooltipDirty(Ceo);
+		}
 
         public void SendCompanyMessage(LocString message, NotificationCategory notificationCategory = NotificationCategory.Government, NotificationStyle notificationStyle = NotificationStyle.Chat)
         {
@@ -914,6 +920,7 @@ namespace Eco.Mods.Companies
                     notificationStyle
                 );
             }
+
         }
 
         private static void SendGlobalMessage(LocString message)
@@ -937,26 +944,24 @@ namespace Eco.Mods.Companies
             sb.Append(TextLoc.HeaderLoc($"CEO: "));
             sb.AppendLine(Ceo.UILinkNullSafe());
             sb.AppendLine(TextLoc.HeaderLoc($"Employees:"));
-            sb.AppendLine(this.Employees.Any() ? this.Employees.Select(x => x.UILinkNullSafe()).InlineFoldoutListLoc("citizen", TooltipOrigin.None, 5) : Localizer.DoStr("None."));
+			sb.AppendLine(Employees.Any() ? Employees.Select(x => x.UILinkNullSafe()).InlineFoldoutListLoc("citizen", TooltipOrigin.None, 5) : Localizer.DoStr("None."));
             sb.Append(TextLoc.HeaderLoc($"Finances: "));
-            sb.AppendLine(this.OwnedAccounts.Any() ? this.OwnedAccounts.Select(x => x.UILinkNullSafe()).InlineFoldoutListLoc("account", TooltipOrigin.None, 5) : Localizer.DoStr("None."));
+			sb.AppendLine(OwnedAccounts.Any() ? OwnedAccounts.Select(x => x.UILinkNullSafe()).InlineFoldoutListLoc("account", TooltipOrigin.None, 5) : Localizer.DoStr("None."));
             sb.Append(TextLoc.HeaderLoc($"HQ: "));
-            sb.AppendLine(this.HQDeed != null ? this.HQDeed.UILink() : Localizer.DoStr("None."));
+			sb.AppendLine(HQDeed != null ? HQDeed.UILink() : Localizer.DoStr("None."));
             sb.AppendLine(TextLoc.HeaderLoc($"Property:"));
-            sb.AppendLine(this.OwnedDeeds.Any() ? this.OwnedDeeds.Where(x => x != HQDeed).Select(x => x.UILinkNullSafe()).InlineFoldoutListLoc("deed", TooltipOrigin.None, 5) : Localizer.DoStr("None."));
+			sb.AppendLine(OwnedDeeds.Any() ? OwnedDeeds.Where(x => x != HQDeed).Select(x => x.UILinkNullSafe()).InlineFoldoutListLoc("deed", TooltipOrigin.None, 5) : Localizer.DoStr("None."));
             sb.AppendLine(TextLoc.HeaderLoc($"Shareholders:"));
-            sb.AppendLine(this.Shareholders.Any() ? this.Shareholders.Select(x => x.Description).InlineFoldoutListLoc("holding", TooltipOrigin.None, 5) : Localizer.DoStr("None."));
+			sb.AppendLine(Shareholders.Any() ? Shareholders.Select(x => x.Description).InlineFoldoutListLoc("holding", TooltipOrigin.None, 5) : Localizer.DoStr("None."));
             sb.Append(TextLoc.HeaderLoc($"Citizenship: "));
-            sb.AppendLine(this.DirectCitizenship != null ? DirectCitizenship.UILink() : Localizer.DoStr("None."));
+			sb.AppendLine(DirectCitizenship != null ? DirectCitizenship.UILink() : Localizer.DoStr("None."));
             return sb.ToLocString();
         }
 
         [NewTooltip(CacheAs.Instance | CacheAs.User, 110)]
         public LocString PerUserTooltip(User user)
         {
-            var sb = new LocStringBuilder();
-            if (user == Ceo)
-            {
+			if (user == Ceo) {
                 return Localizer.DoStr("You are the CEO of this company.");
             }
             else if (IsEmployee(user))

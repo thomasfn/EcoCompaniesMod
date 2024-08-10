@@ -308,16 +308,13 @@ namespace Eco.Mods.Companies
         {
             if (deed.Owner is not User newOwner) { return; }
             var company = Company.GetFromLegalPerson(newOwner);
-            if (company != null)
-            {
+
                 // Note: we're assuming that we're not already an owner of the deed (e.g. change between aliases both containing the legal person)
-                company.OnNowOwnerOfProperty(deed);
-            }
+			company?.OnNowOwnerOfProperty(deed);
         }
 
         private void FixupHomesteadClaimItems(User employee)
         {
-
             var company = Company.GetEmployer(employee);
             if (company == null) { return; }
             // Sweep their inv looking for HomesteadClaimStakeItem items with the "user" field set to the legal person and change it to point at them instead
@@ -349,7 +346,7 @@ namespace Eco.Mods.Companies
 
         private void ClaimHomesteadAsHQAsyncRetry(User employee, Company employer)
         {
-            Task.Delay(250).ContinueWith((t) => ClaimHomesteadAsHQ(employee, employer, false));
+			Task.Delay(250).ContinueWith(t => ClaimHomesteadAsHQ(employee, employer, false));
         }
 
         private void ClaimHomesteadAsHQ(User employee, Deed deed, Company employer)
@@ -362,8 +359,8 @@ namespace Eco.Mods.Companies
         internal static string GetLegalPersonName(string companyName)
             => $"{companyName} Legal Person";
 
-        internal static string GetCompanyAccountName(string companyName)
-            => $"{companyName} Company Account";
+		internal static string GetCompanyAccountName(string companyName) 
+			=> $"{companyName} Company Account";
 
         internal static string GetCompanyCurrencyName(string companyName)
             => $"{companyName} Shares";
