@@ -51,14 +51,18 @@ namespace Eco.Mods.Companies
     {
         public IPersistent StorageHandle { get; set; }
 
-        [Serialized] public Registrar<Company> Companies = new ();
+		[Serialized] public Registrar<Company> Companies = new();
 
-        public readonly PeriodicUpdateConfig UpdateTimer = new PeriodicUpdateConfig(true);
+		public readonly PeriodicUpdateConfig UpdateTimer = new(true);
 
         public void InitializeRegistrars()
         {
             Companies.PreInit(Localizer.DoStr("Companies"), true, CompaniesPlugin.Obj, Localizer.DoStr("Companies"));
         }
+		public void Initialize()
+		{
+
+		}
     }
 
     [Eco]
@@ -129,6 +133,7 @@ namespace Eco.Mods.Companies
 
         public void Initialize(TimedTask timer)
         {
+			data.Initialize();
 			Singleton<PluginManager>.Obj.InitComplete += OnPostInitialize;
 
 			InstallLawManagerHack();
